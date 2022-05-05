@@ -18,14 +18,18 @@ package main
 
 import (
 	"flag"
-	"os"
-
+	"fmt"
 	infrastructurev1beta1 "github.com/oracle/cluster-api-provider-oci/api/v1beta1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"os"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/feature"
 	ctrl "sigs.k8s.io/controller-runtime"
+
+	expV1Beta1 "github.com/oracle/cluster-api-provider-oci/exp/api/v1beta1"
+	expcontrollers "github.com/oracle/cluster-api-provider-oci/exp/controllers"
 
 	"github.com/oracle/cluster-api-provider-oci/cloud/config"
 	"github.com/oracle/cluster-api-provider-oci/cloud/scope"
@@ -53,6 +57,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(infrastructurev1beta1.AddToScheme(scheme))
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
+	utilruntime.Must(expV1Beta1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -156,6 +161,28 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", scope.OCIMachineKind)
 		os.Exit(1)
 	}
+
+	setupLog.Info("machine pool? ")
+	setupLog.Info(fmt.Sprintf("%+v\n", feature.Gates))
+	if feature.Gates.Enabled(feature.MachinePool) {
+		setupLog.Info("machine pool YAY ")
+	} else {
+		setupLog.Info("machine pool NAH ")
+	}
+	//if feature.Gates.Enabled(feature.MachinePool) {
+	setupLog.Info("MACHINE POOL!")
+	setupLog.V(1).Info("enabling machine pool controller")
+	if err := (&expcontrollers.OCIMachinePoolReconciler{
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		ClientProvider: clientProvider,
+		Recorder:       mgr.GetEventRecorderFor("ocimachinepool-controller"),
+		Region:         region,
+	}).SetupWithManager(ctx, mgr, controller.Options{}); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", expV1Beta1.OCIMachinePoolKind)
+		os.Exit(1)
+	}
+	//}
 
 	if err = (&infrastructurev1beta1.OCICluster{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "OCICluster")

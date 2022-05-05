@@ -1,0 +1,60 @@
+# see region identifier in https://docs.oracle.com/en-us/iaas/Content/General/Concepts/regions.htm
+# for a list of regions
+region: <region>
+tenancy: ocid1.tenancy.oc1..aaaaaaaagkbzgg6lpzrf47xzy4rjoxg4de6ncfiq2rncmjiujvy2hjgxvziq
+user: ocid1.user.oc1..aaaaaaaacjfy7pajrli3ylxuaedxwyor5mmdp7sslfcdp2f7qa5l3mc3vl6q
+key: |
+  -----BEGIN RSA PRIVATE KEY-----
+  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
+  -----END RSA PRIVATE KEY-----
+fingerprint: 8b:46:e4:b9:55:7b:9f:13:31:3d:60:f5:9a:19:4d:bb
+
+useInstancePrincipals: false
