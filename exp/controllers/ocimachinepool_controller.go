@@ -23,6 +23,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"time"
+
 	"github.com/go-logr/logr"
 	infrav1exp "github.com/oracle/cluster-api-provider-oci/exp/api/v1beta1"
 	"github.com/oracle/oci-go-sdk/v63/common"
@@ -39,7 +41,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"time"
 
 	infrastructurev1beta1 "github.com/oracle/cluster-api-provider-oci/api/v1beta1"
 	"github.com/oracle/cluster-api-provider-oci/cloud/scope"
@@ -398,14 +399,18 @@ func (r *OCIMachinePoolReconciler) reconcileLaunchTemplate(ctx context.Context, 
 		return err
 	}
 
-	// TODO: for POC assuming metadata is nil
-	metadata := make(map[string]string)
+	metadata := machinePoolScope.OCIMachinePool.Spec.Metadata
+	if metadata == nil {
+		metadata = make(map[string]string)
+	}
 	metadata["user_data"] = base64.StdEncoding.EncodeToString([]byte(cloudInitData))
 
 	// if get fails maybe try to create
 	if instanceConfiguration == nil {
 		//poolName := fmt.Sprintf("%s-%s", machinePoolScope.OCICluster.Name, machinePoolScope.MachinePool.Name)
 		//TODO: don't hard code :-)
+		subnetId := machinePoolScope.GetWorkerMachineSubnet()
+		nsgId := machinePoolScope.GetWorkerMachineNSG()
 		req := core.CreateInstanceConfigurationRequest{
 			CreateInstanceConfiguration: core.CreateInstanceConfigurationDetails{
 				CompartmentId: common.String(machinePoolScope.OCICluster.Spec.CompartmentId),
@@ -424,6 +429,11 @@ func (r *OCIMachinePoolReconciler) reconcileLaunchTemplate(ctx context.Context, 
 							ImageId: common.String("ocid1.image.oc1.phx.aaaaaaaabalujkjojovptylwmgkh4ykxrzu47gkhd6nzxshj5n7f6jyocofa"),
 						},
 						Metadata: metadata,
+						CreateVnicDetails: &core.InstanceConfigurationCreateVnicDetails{
+							SubnetId:       subnetId,
+							AssignPublicIp: common.Bool(true),
+							NsgIds:         []string{*nsgId},
+						},
 					},
 				},
 			},
@@ -502,7 +512,7 @@ func (r *OCIMachinePoolReconciler) createInstancePool(ctx context.Context, machi
 		CreateInstancePoolDetails: core.CreateInstancePoolDetails{
 			CompartmentId:           common.String(machinePoolScope.OCICluster.Spec.CompartmentId),
 			InstanceConfigurationId: common.String(machinePoolScope.GetInstanceConfigurationId()),
-			Size:                    common.Int(4),
+			Size:                    common.Int(1),
 			DisplayName:             common.String(machinePoolScope.OCIMachinePool.GetName()),
 
 			PlacementConfigurations: placement,

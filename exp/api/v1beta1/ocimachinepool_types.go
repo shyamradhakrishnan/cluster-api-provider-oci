@@ -50,6 +50,10 @@ type OCIMachinePoolSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	MaxSize int32 `json:"maxSize"`
 
+	// Custom metadata key/value pairs that you provide, such as the SSH public key
+	// required to connect to the instance.
+	Metadata map[string]string `json:"metadata,omitempty"`
+
 	//TODO Add
 	// Ad
 	// subnet

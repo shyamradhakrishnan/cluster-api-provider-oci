@@ -19,6 +19,7 @@ package scope
 import (
 	"context"
 	"fmt"
+
 	"github.com/oracle/cluster-api-provider-oci/cloud/ociutil"
 	expinfra1 "github.com/oracle/cluster-api-provider-oci/exp/api/v1beta1"
 	"github.com/oracle/oci-go-sdk/v63/common"
@@ -227,4 +228,14 @@ func (m *MachinePoolScope) GetFreeFormTags(ociCluster infrastructurev1beta1.OCIC
 	}
 
 	return tags
+}
+
+func (m *MachinePoolScope) GetWorkerMachineNSG() *string {
+	for _, nsg := range m.OCICluster.Spec.NetworkSpec.Vcn.NetworkSecurityGroups {
+		if nsg.Role == infrastructurev1beta1.WorkerRole {
+			// if an NSG name is defined, use the correct NSG
+			return nsg.ID
+		}
+	}
+	return nil
 }

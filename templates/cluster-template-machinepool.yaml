@@ -33,8 +33,29 @@ metadata:
   name: "${CLUSTER_NAME}"
 spec:
   # TODO fix had to do this for testing locally
-  ociResourceIdentifier: "1234-5678-9014"
+  ociResourceIdentifier: "1234-5678-9017"
   compartmentId: "${OCI_COMPARTMENT_ID}"
+  networkSpec:
+    vcn:
+      cidr: "10.0.0.0/16"
+      name: "${CLUSTER_NAME}"
+      subnets:
+        - cidr: 10.0.0.8/29
+          name: control-plane-endpoint
+          role: control-plane-endpoint
+          type: public
+        - cidr: 10.0.0.0/29
+          name: control-plane
+          role: control-plane
+          type: public
+        - cidr: 10.0.0.32/27
+          name: service-lb
+          role: service-lb
+          type: public
+        - cidr: 10.0.64.0/20
+          name: worker
+          role: worker
+          type: public
 ---
 kind: KubeadmControlPlane
 apiVersion: controlplane.cluster.x-k8s.io/v1beta1
@@ -87,23 +108,9 @@ spec:
         ocpus: "${OCI_CONTROL_PLANE_MACHINE_TYPE_OCPUS=1}"
       metadata:
         ssh_authorized_keys: "${OCI_SSH_KEY}"
+      networkDetails:
+        assignPublicIp: true
       isPvEncryptionInTransitEnabled: ${OCI_CONTROL_PLANE_PV_TRANSIT_ENCRYPTION=true}
----
-apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-kind: OCIMachineTemplate
-metadata:
-  name: "${CLUSTER_NAME}-md-0"
-spec:
-  template:
-    spec:
-      imageId: "${OCI_IMAGE_ID}"
-      compartmentId: "${OCI_COMPARTMENT_ID}"
-      shape: "${OCI_NODE_MACHINE_TYPE=VM.Standard.E4.Flex}"
-      shapeConfig:
-        ocpus: "${OCI_NODE_MACHINE_TYPE_OCPUS=1}"
-      metadata:
-        ssh_authorized_keys: "${OCI_SSH_KEY}"
-      isPvEncryptionInTransitEnabled: ${OCI_NODE_PV_TRANSIT_ENCRYPTION=true}
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachinePool
@@ -135,20 +142,20 @@ metadata:
 spec:
   minSize: 1
   maxSize: 10
+  metadata:
+    ssh_authorized_keys: "${OCI_SSH_KEY}"
   instanceConfiguration:
     instanceDetails:
       shape: "${OCI_NODE_MACHINE_TYPE=VM.Standard.E4.Flex}"
 # TODO add CP MP
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1alpha4
-kind: KubeadmConfigTemplate
+kind: KubeadmConfig
 metadata:
-  name: "${CLUSTER_NAME}-md-0"
+  name: "${CLUSTER_NAME}-mp-0"
 spec:
-  template:
-    spec:
-      joinConfiguration:
-        nodeRegistration:
-          kubeletExtraArgs:
-            cloud-provider: external
-            provider-id: oci://{{ ds["id"] }}
+  joinConfiguration:
+    nodeRegistration:
+      kubeletExtraArgs:
+        cloud-provider: external
+        provider-id: oci://{{ ds["id"] }}

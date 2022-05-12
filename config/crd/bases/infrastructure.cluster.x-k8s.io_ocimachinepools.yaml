@@ -75,6 +75,12 @@ spec:
                 format: int32
                 minimum: 1
                 type: integer
+              metadata:
+                additionalProperties:
+                  type: string
+                description: Custom metadata key/value pairs that you provide, such
+                  as the SSH public key required to connect to the instance.
+                type: object
               minSize:
                 default: 1
                 description: MinSize defines the minimum size of the group.

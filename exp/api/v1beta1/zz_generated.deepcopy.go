@@ -154,6 +154,13 @@ func (in *OCIMachinePoolSpec) DeepCopyInto(out *OCIMachinePoolSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.Metadata != nil {
+		in, out := &in.Metadata, &out.Metadata
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	in.InstanceConfiguration.DeepCopyInto(&out.InstanceConfiguration)
 }
 
