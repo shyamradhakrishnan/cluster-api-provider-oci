@@ -87,6 +87,14 @@ func (r *OCIClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, errors.New("OCIClusterReconciler Region can't be nil")
 	}
 
+	// -------- TODO: remove
+	//this is used only for running with make run
+	//logger.Info(" ------- OCIResourceIdentifier: ", ociCluster.Spec.OCIResourceIdentifier)
+	//if ociCluster.Spec.OCIResourceIdentifier == "" {
+	//	ociCluster.Spec.OCIResourceIdentifier = string(uuid.NewUUID())
+	//}
+	//logger.Info(" ------- OCIResourceIdentifier: ", ociCluster.Spec.OCIResourceIdentifier)
+
 	// Fetch the Cluster.
 	cluster, err := util.GetOwnerCluster(ctx, r.Client, ociCluster.ObjectMeta)
 	if err != nil {

@@ -21,26 +21,17 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
 // +kubebuilder:object:generate=true
 // +groupName=infrastructure.cluster.x-k8s.io
 
-const OCIMachinePoolKind = "OCIMachinePool"
-
-var (
-	// GroupVersion is group version used to register these objects
-	GroupVersion = schema.GroupVersion{Group: "infrastructure.cluster.x-k8s.io", Version: "v1beta1"}
-
-	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
-	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}
-
-	// AddToScheme adds the types in this group-version to the given scheme.
-	AddToScheme = SchemeBuilder.AddToScheme
+// Constants block.
+const (
+	// MachinePoolFinalizer is the finalizer for the machine pool.
+	MachinePoolFinalizer = "ocimachinepool.infrastructure.cluster.x-k8s.io"
 )
 
 // OCIMachinePoolSpec defines the desired state of OCIMachinePool
@@ -89,6 +80,11 @@ type LaunchDetails struct {
 	//displayName
 	//freeformTags
 	//shapeConfig
+
+	// Custom metadata key/value pairs that you provide, such as the SSH public key
+	// required to connect to the instance.
+	Metadata map[string]string `json:"metadata,omitempty"`
+
 	Shape         string        `json:"shape,omitempty"`
 	SourceDetails SourceDetails `json:"sourceDetails,omitempty"`
 }
@@ -119,6 +115,9 @@ type OCIMachinePoolStatus struct {
 	// Replicas is the most recently observed number of replicas
 	// +optional
 	Replicas int32 `json:"replicas"`
+
+	// The ID of the Instance Configuration
+	InstanceConfigurationId string `json:"instanceConfigurationId,omitempty"`
 
 	// Todo
 	// ReadyReplicas
@@ -152,6 +151,16 @@ type OCIMachinePoolList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []OCIMachinePool `json:"items"`
+}
+
+// GetConditions returns the list of conditions for an OCIMachine API object.
+func (m *OCIMachinePool) GetConditions() clusterv1.Conditions {
+	return m.Status.Conditions
+}
+
+// SetConditions will set the given conditions on an OCIMachine object.
+func (m *OCIMachinePool) SetConditions(conditions clusterv1.Conditions) {
+	m.Status.Conditions = conditions
 }
 
 func init() {

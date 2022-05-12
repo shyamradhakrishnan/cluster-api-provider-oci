@@ -32,6 +32,8 @@ metadata:
     cluster.x-k8s.io/cluster-name: "${CLUSTER_NAME}"
   name: "${CLUSTER_NAME}"
 spec:
+  # TODO fix had to do this for testing locally
+  ociResourceIdentifier: "1234-5678-9014"
   compartmentId: "${OCI_COMPARTMENT_ID}"
 ---
 kind: KubeadmControlPlane

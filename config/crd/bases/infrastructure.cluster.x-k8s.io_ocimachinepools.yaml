@@ -46,9 +46,14 @@ spec:
                         description: LaunchDetails Instance launch details for creating
                           an instance from an instance configuration https://docs.oracle.com/en-us/iaas/api/#/en/iaas/20160918/datatypes/InstanceConfigurationLaunchInstanceDetails
                         properties:
+                          metadata:
+                            additionalProperties:
+                              type: string
+                            description: Custom metadata key/value pairs that you
+                              provide, such as the SSH public key required to connect
+                              to the instance.
+                            type: object
                           shape:
-                            description: availabilityDomain displayName freeformTags
-                              shapeConfig
                             type: string
                           sourceDetails:
                             description: SourceDetails source details for instance
@@ -136,6 +141,9 @@ spec:
               failureReason:
                 description: MachineStatusError defines errors states for Machine
                   objects.
+                type: string
+              instanceConfigurationId:
+                description: The ID of the Instance Configuration
                 type: string
               ready:
                 description: Ready is true when the provider resource is ready.

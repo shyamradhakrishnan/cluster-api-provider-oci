@@ -29,6 +29,8 @@ spec:
         - /manager
         args:
         - "--leader-elect"
+#        - "--feature-gates=MachinePool=${EXP_MACHINE_POOL:=false}"
+#        - "--v=${CAPA_LOGLEVEL:=8}"
         - "--metrics-bind-address=127.0.0.1:8080"
         image: controller:latest
         name: manager
@@ -46,12 +48,5 @@ spec:
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10
-        resources:
-          limits:
-            cpu: 100m
-            memory: 30Mi
-          requests:
-            cpu: 100m
-            memory: 20Mi
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

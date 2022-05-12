@@ -16,6 +16,7 @@ COPY api/ api/
 COPY controllers/ controllers/
 COPY cloud/ cloud/
 COPY exp/ exp/
+COPY feature/ feature/
 COPY vendor/ vendor/
 
 # Build
