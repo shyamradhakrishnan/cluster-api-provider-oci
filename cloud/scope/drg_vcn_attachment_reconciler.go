@@ -54,9 +54,9 @@ func (s *ClusterScope) ReconcileDRGVCNAttachment(ctx context.Context) error {
 
 	response, err := s.VCNClient.CreateDrgAttachment(ctx, core.CreateDrgAttachmentRequest{
 		CreateDrgAttachmentDetails: core.CreateDrgAttachmentDetails{
-			DisplayName:  common.String(s.OCICluster.Name),
+			DisplayName:  common.String(s.OCIClusterBase.GetName()),
 			DrgId:        s.getDrgID(),
-			VcnId:        s.OCICluster.Spec.NetworkSpec.Vcn.ID,
+			VcnId:        s.OCIClusterBase.GetVCN().ID,
 			FreeformTags: s.GetFreeFormTags(),
 			DefinedTags:  s.GetDefinedTags(),
 		},
@@ -86,9 +86,9 @@ func (s *ClusterScope) GetDRGAttachment(ctx context.Context) (*core.DrgAttachmen
 
 	attachments, err := s.VCNClient.ListDrgAttachments(ctx, core.ListDrgAttachmentsRequest{
 		AttachmentType: core.ListDrgAttachmentsAttachmentTypeVcn,
-		DisplayName:    common.String(s.OCICluster.Name),
+		DisplayName:    common.String(s.OCIClusterBase.GetName()),
 		DrgId:          s.getDrgID(),
-		NetworkId:      s.OCICluster.Spec.NetworkSpec.Vcn.ID,
+		NetworkId:      s.OCIClusterBase.GetVCN().ID,
 		CompartmentId:  common.String(s.GetCompartmentId()),
 	})
 

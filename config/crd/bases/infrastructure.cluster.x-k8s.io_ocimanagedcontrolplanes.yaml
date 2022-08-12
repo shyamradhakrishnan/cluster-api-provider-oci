@@ -101,6 +101,19 @@ spec:
                 - port
                 type: object
               endpointConfig:
+                description: EndpointConfig defines the network configuration for
+                  access to the Cluster control plane
+                properties:
+                  isPublicIpEnabled:
+                    description: Flag to enable public endpoint address for the OKE
+                      cluster. If not set, will calculate this using endpoint subnet
+                      type.
+                    type: boolean
+                type: object
+              id:
+                description: ID of the OKEcluster.
+                type: string
+              imagePolicyConfig:
                 description: ImagePolicyConfig defines the properties that define
                   a image verification policy.
                 properties:
@@ -122,9 +135,6 @@ spec:
                       type: object
                     type: array
                 type: object
-              id:
-                description: ID of the OKEcluster.
-                type: string
               kmsKeyId:
                 description: KmsKeyId defines the OCID of the KMS key to be used as
                   the master encryption key for Kubernetes secret encryption. When

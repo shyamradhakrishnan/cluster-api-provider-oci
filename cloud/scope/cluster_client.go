@@ -2,7 +2,8 @@ package scope
 
 import (
 	"context"
-	"github.com/oracle/cluster-api-provider-oci/api/v1beta1"
+
+	"github.com/oracle/cluster-api-provider-oci/cloud/base"
 )
 
 type ClusterScopeClient interface {
@@ -30,6 +31,5 @@ type ClusterScopeClient interface {
 	DeleteVCN(ctx context.Context) error
 	DeleteDRGVCNAttachment(ctx context.Context) error
 	DeleteDRGRPCAttachment(ctx context.Context) error
-	Close(ctx context.Context) error
-	GetOCICluster() *v1beta1.OCICluster
+	GetOCIClusterBase() base.OCIClusterBase
 }

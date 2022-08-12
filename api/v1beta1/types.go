@@ -21,12 +21,13 @@ const (
 	ControlPlaneEndpointRole = "control-plane-endpoint"
 	WorkerRole               = "worker"
 	ServiceLoadBalancerRole  = "service-lb"
+	PodRole                  = "pod"
 	Private                  = "private"
 	Public                   = "public"
 )
 
 // SubnetRoles a slice of all the subnet roles
-var SubnetRoles = [...]Role{ControlPlaneRole, ControlPlaneEndpointRole, WorkerRole, ServiceLoadBalancerRole}
+var SubnetRoles = [...]Role{ControlPlaneRole, ControlPlaneEndpointRole, WorkerRole, ServiceLoadBalancerRole, PodRole}
 
 // NetworkDetails defines the configuration options for the network
 type NetworkDetails struct {

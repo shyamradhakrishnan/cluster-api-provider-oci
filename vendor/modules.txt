@@ -257,6 +257,7 @@ github.com/opencontainers/image-spec/specs-go/v1
 ## explicit
 github.com/oracle/oci-go-sdk/v63/common
 github.com/oracle/oci-go-sdk/v63/common/auth
+github.com/oracle/oci-go-sdk/v63/containerengine
 github.com/oracle/oci-go-sdk/v63/core
 github.com/oracle/oci-go-sdk/v63/identity
 github.com/oracle/oci-go-sdk/v63/networkloadbalancer

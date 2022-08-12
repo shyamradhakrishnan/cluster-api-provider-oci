@@ -194,6 +194,17 @@ func main() {
 		}
 	}
 
+	if err = (&controllers.OCIManagedClusterReconciler{
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		Region:         region,
+		ClientProvider: clientProvider,
+		Recorder:       mgr.GetEventRecorderFor("ocimanagedcluster-controller"),
+	}).SetupWithManager(ctx, mgr, controller.Options{}); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", scope.OCIManagedClusterKind)
+		os.Exit(1)
+	}
+
 	if err = (&infrastructurev1beta1.OCICluster{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "OCICluster")
 		os.Exit(1)

@@ -22,6 +22,7 @@ package v1beta1
 import (
 	"fmt"
 
+	"github.com/oracle/oci-go-sdk/v63/common"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -43,6 +44,15 @@ var (
 func (c *OCICluster) Default() {
 	if c.Spec.OCIResourceIdentifier == "" {
 		c.Spec.OCIResourceIdentifier = string(uuid.NewUUID())
+	}
+	if !c.Spec.NetworkSpec.SkipNetworkManagement {
+		if len(c.Spec.NetworkSpec.Vcn.Subnets) == 0 {
+			c.Spec.NetworkSpec.Vcn.Subnets = c.SubnetSpec()
+		}
+		if len(c.Spec.NetworkSpec.Vcn.NetworkSecurityGroups) == 0 {
+			c.Spec.NetworkSpec.Vcn.NetworkSecurityGroups = c.NSGSpec()
+		}
+		clusterlogger.Info("cluster", "c", c)
 	}
 }
 
@@ -114,6 +124,8 @@ func (c *OCICluster) validate(old *OCICluster) field.ErrorList {
 		oldNetworkSpec = old.Spec.NetworkSpec
 	}
 
+	clusterlogger.Info("cluster", "c", c)
+
 	allErrs = append(allErrs, validateNetworkSpec(c.Spec.NetworkSpec, oldNetworkSpec, field.NewPath("spec").Child("networkSpec"))...)
 
 	if len(c.Spec.CompartmentId) <= 0 {
@@ -147,4 +159,484 @@ func (c *OCICluster) validate(old *OCICluster) field.ErrorList {
 	}
 
 	return allErrs
+}
+
+func (c *OCICluster) SubnetSpec() []*Subnet {
+	subnets := make([]*Subnet, 0)
+	subnets = append(subnets, &Subnet{
+		Role: ControlPlaneEndpointRole,
+		Name: ControlPlaneEndpointDefaultName,
+		CIDR: ControlPlaneEndpointSubnetDefaultCIDR,
+		Type: Public,
+	})
+
+	subnets = append(subnets, &Subnet{
+		Role: ControlPlaneRole,
+		Name: ControlPlaneDefaultName,
+		CIDR: ControlPlaneMachineSubnetDefaultCIDR,
+		Type: Private,
+	})
+
+	subnets = append(subnets, &Subnet{
+		Role: ServiceLoadBalancerRole,
+		Name: ServiceLBDefaultName,
+		CIDR: ServiceLoadBalancerDefaultCIDR,
+		Type: Public,
+	})
+	subnets = append(subnets, &Subnet{
+		Role: WorkerRole,
+		Name: WorkerDefaultName,
+		CIDR: WorkerSubnetDefaultCIDR,
+		Type: Private,
+	})
+
+	return subnets
+}
+
+func (c *OCICluster) NSGSpec() []*NSG {
+	nsgs := make([]*NSG, 0)
+	nsgs = append(nsgs, &NSG{
+		Role:         ControlPlaneEndpointRole,
+		Name:         ControlPlaneEndpointDefaultName,
+		IngressRules: c.GetControlPlaneEndpointDefaultIngressRules(),
+		EgressRules:  c.GetControlPlaneEndpointDefaultEgressRules(),
+	})
+
+	nsgs = append(nsgs, &NSG{
+		Role:         ControlPlaneRole,
+		Name:         ControlPlaneDefaultName,
+		IngressRules: c.GetControlPlaneMachineDefaultIngressRules(),
+		EgressRules:  c.GetControlPlaneMachineDefaultEgressRules(),
+	})
+
+	nsgs = append(nsgs, &NSG{
+		Role:         WorkerRole,
+		Name:         WorkerDefaultName,
+		IngressRules: c.GetNodeDefaultIngressRules(),
+		EgressRules:  c.GetNodeDefaultEgressRules(),
+	})
+
+	nsgs = append(nsgs, &NSG{
+		Role:         ServiceLoadBalancerRole,
+		Name:         ServiceLBDefaultName,
+		IngressRules: c.GetServiceLoadBalancerDefaultIngressRules(),
+		EgressRules:  c.GetServiceLoadBalancerDefaultEgressRules(),
+	})
+	return nsgs
+}
+
+func (c *OCICluster) GetControlPlaneMachineDefaultIngressRules() []IngressSecurityRuleForNSG {
+	return []IngressSecurityRuleForNSG{
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Kubernetes API endpoint to Control Plane(apiserver port) communication"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(6443),
+						Min: common.Int(6443),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(ControlPlaneEndpointSubnetDefaultCIDR),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Control plane node to Control Plane(apiserver port) communication"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(6443),
+						Min: common.Int(6443),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(ControlPlaneMachineSubnetDefaultCIDR),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Worker Node to Control Plane(apiserver port) communication"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(6443),
+						Min: common.Int(6443),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(WorkerSubnetDefaultCIDR),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("etcd client communication"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(2379),
+						Min: common.Int(2379),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(ControlPlaneMachineSubnetDefaultCIDR),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("etcd peer"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(2380),
+						Min: common.Int(2380),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(ControlPlaneMachineSubnetDefaultCIDR),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Calico networking (BGP)"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(179),
+						Min: common.Int(179),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(ControlPlaneMachineSubnetDefaultCIDR),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Calico networking (BGP)"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(179),
+						Min: common.Int(179),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(WorkerSubnetDefaultCIDR),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Calico networking with IP-in-IP enabled"),
+				Protocol:    common.String("4"),
+				SourceType:  IngressSecurityRuleSourceTypeCidrBlock,
+				Source:      common.String(ControlPlaneMachineSubnetDefaultCIDR),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Calico networking with IP-in-IP enabled"),
+				Protocol:    common.String("4"),
+				SourceType:  IngressSecurityRuleSourceTypeCidrBlock,
+				Source:      common.String(WorkerSubnetDefaultCIDR),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Path discovery"),
+				Protocol:    common.String("1"),
+				IcmpOptions: &IcmpOptions{
+					Type: common.Int(3),
+					Code: common.Int(4),
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(VcnDefaultCidr),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Inbound SSH traffic to Control Plane"),
+				Protocol:    common.String("6"),
+				SourceType:  IngressSecurityRuleSourceTypeCidrBlock,
+				Source:      common.String("0.0.0.0/0"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(22),
+						Min: common.Int(22),
+					},
+				},
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Control Plane to Control Plane Kubelet Communication"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(10250),
+						Min: common.Int(10250),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(ControlPlaneMachineSubnetDefaultCIDR),
+			},
+		},
+	}
+}
+
+func (c *OCICluster) GetControlPlaneMachineDefaultEgressRules() []EgressSecurityRuleForNSG {
+	return []EgressSecurityRuleForNSG{
+		{
+			EgressSecurityRule: EgressSecurityRule{
+				Description:     common.String("Control Plane access to Internet"),
+				Protocol:        common.String("all"),
+				DestinationType: EgressSecurityRuleDestinationTypeCidrBlock,
+				Destination:     common.String("0.0.0.0/0"),
+			},
+		},
+	}
+}
+
+func (c *OCICluster) GetNodeDefaultIngressRules() []IngressSecurityRuleForNSG {
+	return []IngressSecurityRuleForNSG{
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Inbound SSH traffic to worker node"),
+				Protocol:    common.String("6"),
+				SourceType:  IngressSecurityRuleSourceTypeCidrBlock,
+				Source:      common.String("0.0.0.0/0"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(22),
+						Min: common.Int(22),
+					},
+				},
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Path discovery"),
+				Protocol:    common.String("1"),
+				IcmpOptions: &IcmpOptions{
+					Type: common.Int(3),
+					Code: common.Int(4),
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(VcnDefaultCidr),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Control Plane to worker node Kubelet Communication"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(10250),
+						Min: common.Int(10250),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(ControlPlaneMachineSubnetDefaultCIDR),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Worker node to worker node Kubelet Communication"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(10250),
+						Min: common.Int(10250),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(WorkerSubnetDefaultCIDR),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Calico networking (BGP)"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(179),
+						Min: common.Int(179),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(ControlPlaneMachineSubnetDefaultCIDR),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Calico networking (BGP)"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(179),
+						Min: common.Int(179),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(WorkerSubnetDefaultCIDR),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Calico networking with IP-in-IP enabled"),
+				Protocol:    common.String("4"),
+				SourceType:  IngressSecurityRuleSourceTypeCidrBlock,
+				Source:      common.String(ControlPlaneMachineSubnetDefaultCIDR),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Calico networking with IP-in-IP enabled"),
+				Protocol:    common.String("4"),
+				SourceType:  IngressSecurityRuleSourceTypeCidrBlock,
+				Source:      common.String(WorkerSubnetDefaultCIDR),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Worker node to default NodePort ingress communication"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(32767),
+						Min: common.Int(30000),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(WorkerSubnetDefaultCIDR),
+			},
+		},
+	}
+}
+
+func (c *OCICluster) GetNodeDefaultEgressRules() []EgressSecurityRuleForNSG {
+	return []EgressSecurityRuleForNSG{
+		{
+			EgressSecurityRule: EgressSecurityRule{
+				Description:     common.String("Worker node access to Internet"),
+				Protocol:        common.String("all"),
+				DestinationType: EgressSecurityRuleDestinationTypeCidrBlock,
+				Destination:     common.String("0.0.0.0/0"),
+			},
+		},
+	}
+}
+
+func (c *OCICluster) GetServiceLoadBalancerDefaultIngressRules() []IngressSecurityRuleForNSG {
+	return []IngressSecurityRuleForNSG{
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Path discovery"),
+				Protocol:    common.String("1"),
+				IcmpOptions: &IcmpOptions{
+					Type: common.Int(3),
+					Code: common.Int(4),
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(VcnDefaultCidr),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Accept http traffic on port 80"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(80),
+						Min: common.Int(80),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String("0.0.0.0/0"),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Accept https traffic on port 443"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(443),
+						Min: common.Int(443),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String("0.0.0.0/0"),
+			},
+		},
+	}
+}
+
+func (c *OCICluster) GetServiceLoadBalancerDefaultEgressRules() []EgressSecurityRuleForNSG {
+	return []EgressSecurityRuleForNSG{
+		{
+			EgressSecurityRule: EgressSecurityRule{
+				Destination:     common.String(WorkerSubnetDefaultCIDR),
+				Protocol:        common.String("6"),
+				DestinationType: EgressSecurityRuleDestinationTypeCidrBlock,
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(32767),
+						Min: common.Int(30000),
+					},
+				},
+				Description: common.String("Service LoadBalancer to default NodePort egress communication"),
+			},
+		},
+	}
+}
+
+func (c *OCICluster) GetControlPlaneEndpointDefaultIngressRules() []IngressSecurityRuleForNSG {
+	return []IngressSecurityRuleForNSG{
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("External access to Kubernetes API endpoint"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(6443),
+						Min: common.Int(6443),
+					},
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String("0.0.0.0/0"),
+			},
+		},
+		{
+			IngressSecurityRule: IngressSecurityRule{
+				Description: common.String("Path discovery"),
+				Protocol:    common.String("1"),
+				IcmpOptions: &IcmpOptions{
+					Type: common.Int(3),
+					Code: common.Int(4),
+				},
+				SourceType: IngressSecurityRuleSourceTypeCidrBlock,
+				Source:     common.String(VcnDefaultCidr),
+			},
+		},
+	}
+}
+
+func (c *OCICluster) GetControlPlaneEndpointDefaultEgressRules() []EgressSecurityRuleForNSG {
+	return []EgressSecurityRuleForNSG{
+		{
+			EgressSecurityRule: EgressSecurityRule{
+				Description: common.String("Kubernetes API traffic to Control Plane"),
+				Protocol:    common.String("6"),
+				TcpOptions: &TcpOptions{
+					DestinationPortRange: &PortRange{
+						Max: common.Int(6443),
+						Min: common.Int(6443),
+					},
+				},
+				DestinationType: EgressSecurityRuleDestinationTypeCidrBlock,
+				Destination:     common.String(ControlPlaneMachineSubnetDefaultCIDR),
+			},
+		},
+	}
 }

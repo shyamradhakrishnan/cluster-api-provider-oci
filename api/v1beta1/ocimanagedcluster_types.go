@@ -24,6 +24,11 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
+const (
+	// ManagedClusterFinalizer allows OCIManagedClusterReconciler to clean up OCI resources associated with OCIManagedCluster.
+	ManagedClusterFinalizer = "ocimanagedcluster.infrastructure.cluster.x-k8s.io"
+)
+
 // OCIManagedClusterSpec defines the desired state of OCI OKE Cluster
 type OCIManagedClusterSpec struct {
 
@@ -88,6 +93,16 @@ type OCIManagedClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []OCICluster `json:"items"`
+}
+
+// GetConditions returns the list of conditions for an OCICluster API object.
+func (c *OCIManagedCluster) GetConditions() clusterv1.Conditions {
+	return c.Status.Conditions
+}
+
+// SetConditions will set the given conditions on an OCICluster object.
+func (c *OCIManagedCluster) SetConditions(conditions clusterv1.Conditions) {
+	c.Status.Conditions = conditions
 }
 
 func init() {

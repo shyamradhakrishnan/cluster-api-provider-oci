@@ -82,8 +82,13 @@ spec:
                       be enabled on the nodes.
                     type: string
                   memoryInGBs:
-                    description: NsgNames defines the names of NSGs which will beassociated
-                      with the nodes. the NSGs are defined in OCIManagedCluster object.
+                    description: MemoryInGBs defines the total amount of memory available
+                      to each node, in gigabytes.
+                    type: string
+                  nsgNames:
+                    description: NsgNames defines the names of NSGs which will be
+                      associated with the nodes. the NSGs are defined in OCIManagedCluster
+                      object.
                     items:
                       type: string
                     type: array

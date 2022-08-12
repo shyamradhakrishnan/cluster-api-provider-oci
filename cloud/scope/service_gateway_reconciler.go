@@ -37,7 +37,8 @@ func (s *ClusterScope) ReconcileServiceGateway(ctx context.Context) error {
 		return err
 	}
 	if sgw != nil {
-		s.OCICluster.Spec.NetworkSpec.Vcn.ServiceGatewayId = sgw.Id
+		vcnSpec := s.OCIClusterBase.GetVCN()
+		vcnSpec.ServiceGatewayId = sgw.Id
 		if !s.IsTagsEqual(sgw.FreeformTags, sgw.DefinedTags) {
 			return s.UpdateServiceGateway(ctx)
 		}
@@ -45,7 +46,8 @@ func (s *ClusterScope) ReconcileServiceGateway(ctx context.Context) error {
 		return nil
 	}
 	serviceGateway, err := s.CreateServiceGateway(ctx)
-	s.OCICluster.Spec.NetworkSpec.Vcn.ServiceGatewayId = serviceGateway
+	vcnSpec := s.OCIClusterBase.GetVCN()
+	vcnSpec.ServiceGatewayId = serviceGateway
 	return err
 }
 
@@ -55,7 +57,7 @@ func (s *ClusterScope) UpdateServiceGateway(ctx context.Context) error {
 		DefinedTags:  s.GetDefinedTags(),
 	}
 	sgwResponse, err := s.VCNClient.UpdateServiceGateway(ctx, core.UpdateServiceGatewayRequest{
-		ServiceGatewayId:            s.OCICluster.Spec.NetworkSpec.Vcn.ServiceGatewayId,
+		ServiceGatewayId:            s.OCIClusterBase.GetVCN().ServiceGatewayId,
 		UpdateServiceGatewayDetails: updateSGWDetails,
 	})
 	if err != nil {
@@ -126,7 +128,7 @@ func (s *ClusterScope) DeleteServiceGateway(ctx context.Context) error {
 }
 
 func (s *ClusterScope) GetServiceGateway(ctx context.Context) (*core.ServiceGateway, error) {
-	sgwId := s.OCICluster.Spec.NetworkSpec.Vcn.ServiceGatewayId
+	sgwId := s.OCIClusterBase.GetVCN().ServiceGatewayId
 	if sgwId != nil {
 		resp, err := s.VCNClient.GetServiceGateway(ctx, core.GetServiceGatewayRequest{
 			ServiceGatewayId: sgwId,

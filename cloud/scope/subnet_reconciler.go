@@ -27,11 +27,7 @@ import (
 )
 
 func (s *ClusterScope) ReconcileSubnet(ctx context.Context) error {
-	desiredSubnets, err := s.SubnetSpec()
-	if err != nil {
-		s.Logger.Error(err, "error to generate subnet spec")
-		return errors.Wrap(err, "error to generate subnet spec")
-	}
+	desiredSubnets := s.OCIClusterBase.GetVCN().Subnets
 	for _, desiredSubnet := range desiredSubnets {
 		subnet, err := s.GetSubnet(ctx, *desiredSubnet)
 		if err != nil {
@@ -246,90 +242,7 @@ func (s *ClusterScope) GetNodeSubnet() []*infrastructurev1beta1.Subnet {
 }
 
 func (s *ClusterScope) GetSubnetsSpec() []*infrastructurev1beta1.Subnet {
-	return s.OCICluster.Spec.NetworkSpec.Vcn.Subnets
-}
-
-func (s *ClusterScope) SubnetSpec() ([]*infrastructurev1beta1.Subnet, error) {
-	var subnets []*infrastructurev1beta1.Subnet
-	var cidr string
-	var name string
-	var subnetType infrastructurev1beta1.SubnetType
-	for _, subnet := range s.GetSubnetsSpec() {
-		switch subnet.Role {
-		case infrastructurev1beta1.ControlPlaneEndpointRole:
-			subnetType = infrastructurev1beta1.Public
-			cidr = ControlPlaneEndpointSubnetDefaultCIDR
-			name = ControlPlaneEndpointDefaultName
-		case infrastructurev1beta1.ControlPlaneRole:
-			subnetType = infrastructurev1beta1.Private
-			cidr = ControlPlaneMachineSubnetDefaultCIDR
-			name = ControlPlaneDefaultName
-		case infrastructurev1beta1.ServiceLoadBalancerRole:
-			subnetType = infrastructurev1beta1.Public
-			cidr = ServiceLoadBalancerDefaultCIDR
-			name = ServiceLBDefaultName
-		case infrastructurev1beta1.WorkerRole:
-			subnetType = infrastructurev1beta1.Private
-			cidr = WorkerSubnetDefaultCIDR
-			name = WorkerDefaultName
-		default:
-			return nil, errors.New("invalid subnet role")
-		}
-		if subnet.CIDR != "" {
-			cidr = subnet.CIDR
-		}
-		if subnet.Type != "" {
-			subnetType = subnet.Type
-		}
-		if subnet.Name != "" {
-			name = subnet.Name
-		}
-		subnets = append(subnets, &infrastructurev1beta1.Subnet{
-			Role:         subnet.Role,
-			Name:         name,
-			CIDR:         cidr,
-			Type:         subnetType,
-			SecurityList: subnet.SecurityList,
-			ID:           subnet.ID,
-		})
-	}
-	if s.GetControlPlaneEndpointSubnet() == nil {
-		subnets = append(subnets, &infrastructurev1beta1.Subnet{
-			Role: infrastructurev1beta1.ControlPlaneEndpointRole,
-			Name: ControlPlaneEndpointDefaultName,
-			CIDR: ControlPlaneEndpointSubnetDefaultCIDR,
-			Type: infrastructurev1beta1.Public,
-		})
-	}
-
-	if s.GetControlPlaneMachineSubnet() == nil {
-		subnets = append(subnets, &infrastructurev1beta1.Subnet{
-			Role: infrastructurev1beta1.ControlPlaneRole,
-			Name: ControlPlaneDefaultName,
-			CIDR: ControlPlaneMachineSubnetDefaultCIDR,
-			Type: infrastructurev1beta1.Private,
-		})
-	}
-
-	if s.GetServiceLoadBalancerSubnet() == nil {
-		subnets = append(subnets, &infrastructurev1beta1.Subnet{
-			Role: infrastructurev1beta1.ServiceLoadBalancerRole,
-			Name: ServiceLBDefaultName,
-			CIDR: ServiceLoadBalancerDefaultCIDR,
-			Type: infrastructurev1beta1.Public,
-		})
-	}
-	if s.GetNodeSubnet() == nil {
-		subnets = append(subnets, &infrastructurev1beta1.Subnet{
-			Role: infrastructurev1beta1.WorkerRole,
-			Name: WorkerDefaultName,
-			CIDR: WorkerSubnetDefaultCIDR,
-			Type: infrastructurev1beta1.Private,
-		})
-	}
-	s.OCICluster.Spec.NetworkSpec.Vcn.Subnets = subnets
-
-	return s.OCICluster.Spec.NetworkSpec.Vcn.Subnets, nil
+	return s.OCIClusterBase.GetVCN().Subnets
 }
 
 func (s *ClusterScope) IsSubnetsEqual(actual *core.Subnet, desired infrastructurev1beta1.Subnet) bool {
@@ -348,7 +261,7 @@ func (s *ClusterScope) IsSubnetsEqual(actual *core.Subnet, desired infrastructur
 }
 
 func (s *ClusterScope) isControlPlaneEndpointSubnetPrivate() bool {
-	for _, subnet := range s.OCICluster.Spec.NetworkSpec.Vcn.Subnets {
+	for _, subnet := range s.OCIClusterBase.GetVCN().Subnets {
 		if subnet.Role == infrastructurev1beta1.ControlPlaneEndpointRole && subnet.Type == infrastructurev1beta1.Private {
 			return true
 		}

@@ -74,9 +74,9 @@ func (s *ClusterScope) GetDesiredRouteTables() []string {
 }
 
 func (s *ClusterScope) getRouteTable(ctx context.Context, routeTableType string) (*core.RouteTable, error) {
-	routeTableId := s.OCICluster.Spec.NetworkSpec.Vcn.PublicRouteTableId
+	routeTableId := s.OCIClusterBase.GetVCN().PublicRouteTableId
 	if routeTableType == infrastructurev1beta1.Private {
-		routeTableId = s.OCICluster.Spec.NetworkSpec.Vcn.PrivateRouteTableId
+		routeTableId = s.OCIClusterBase.GetVCN().PrivateRouteTableId
 	}
 	if routeTableId != nil {
 		resp, err := s.VCNClient.GetRouteTable(ctx, core.GetRouteTableRequest{
@@ -128,18 +128,19 @@ func (s *ClusterScope) CreateRouteTable(ctx context.Context, routeTableType stri
 			{
 				DestinationType: core.RouteRuleDestinationTypeCidrBlock,
 				Destination:     common.String("0.0.0.0/0"),
-				NetworkEntityId: s.OCICluster.Spec.NetworkSpec.Vcn.NatGatewayId,
+				NetworkEntityId: s.OCIClusterBase.GetVCN().NatGatewayId,
 				Description:     common.String("traffic to the internet"),
 			},
 			{
 				DestinationType: core.RouteRuleDestinationTypeServiceCidrBlock,
 				Destination:     common.String(fmt.Sprintf("all-%s-services-in-oracle-services-network", strings.ToLower(regionCode))),
-				NetworkEntityId: s.OCICluster.Spec.NetworkSpec.Vcn.ServiceGatewayId,
+				NetworkEntityId: s.OCIClusterBase.GetVCN().ServiceGatewayId,
 				Description:     common.String("traffic to OCI services"),
 			},
 		}
-		if s.OCICluster.Spec.NetworkSpec.VCNPeering != nil {
-			for _, routeRule := range s.OCICluster.Spec.NetworkSpec.VCNPeering.PeerRouteRules {
+		vcnPeering := s.OCIClusterBase.GetVCNPeering()
+		if vcnPeering != nil {
+			for _, routeRule := range vcnPeering.PeerRouteRules {
 				routeRules = append(routeRules, core.RouteRule{
 					DestinationType: core.RouteRuleDestinationTypeCidrBlock,
 					Destination:     common.String(routeRule.VCNCIDRRange),
@@ -155,7 +156,7 @@ func (s *ClusterScope) CreateRouteTable(ctx context.Context, routeTableType stri
 			{
 				DestinationType: core.RouteRuleDestinationTypeCidrBlock,
 				Destination:     common.String("0.0.0.0/0"),
-				NetworkEntityId: s.OCICluster.Spec.NetworkSpec.Vcn.InternetGatewayId,
+				NetworkEntityId: s.OCIClusterBase.GetVCN().InternetGatewayId,
 				Description:     common.String("traffic to/from internet"),
 			},
 		}
@@ -182,11 +183,12 @@ func (s *ClusterScope) CreateRouteTable(ctx context.Context, routeTableType stri
 }
 
 func (s *ClusterScope) setRTStatus(id *string, routeTableType string) {
+	vcnSpec := s.OCIClusterBase.GetVCN()
 	if routeTableType == infrastructurev1beta1.Private {
-		s.OCICluster.Spec.NetworkSpec.Vcn.PrivateRouteTableId = id
+		vcnSpec.PrivateRouteTableId = id
 		return
 	}
-	s.OCICluster.Spec.NetworkSpec.Vcn.PublicRouteTableId = id
+	vcnSpec.PublicRouteTableId = id
 }
 
 func (s *ClusterScope) DeleteRouteTables(ctx context.Context) error {
@@ -214,9 +216,9 @@ func (s *ClusterScope) DeleteRouteTables(ctx context.Context) error {
 
 func (s *ClusterScope) getRouteTableId(routeTableType string) *string {
 	if routeTableType == infrastructurev1beta1.Private {
-		return s.OCICluster.Spec.NetworkSpec.Vcn.PrivateRouteTableId
+		return s.OCIClusterBase.GetVCN().PrivateRouteTableId
 	}
-	return s.OCICluster.Spec.NetworkSpec.Vcn.PublicRouteTableId
+	return s.OCIClusterBase.GetVCN().PublicRouteTableId
 }
 
 func (s *ClusterScope) UpdateRouteTable(ctx context.Context, id *string) error {

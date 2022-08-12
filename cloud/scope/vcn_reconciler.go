@@ -36,7 +36,7 @@ func (s *ClusterScope) ReconcileVCN(ctx context.Context) error {
 		return err
 	}
 	if vcn != nil {
-		s.OCICluster.Spec.NetworkSpec.Vcn.ID = vcn.Id
+		s.OCIClusterBase.GetVCN().ID = vcn.Id
 		if s.IsVcnEquals(vcn, desiredVCN) {
 			s.Logger.Info("No Reconciliation Required for VCN", "vcn", s.getVcnId())
 			return nil
@@ -44,7 +44,7 @@ func (s *ClusterScope) ReconcileVCN(ctx context.Context) error {
 		return s.UpdateVCN(ctx, desiredVCN)
 	}
 	vcnId, err := s.CreateVCN(ctx, desiredVCN)
-	s.OCICluster.Spec.NetworkSpec.Vcn.ID = vcnId
+	s.OCIClusterBase.GetVCN().ID = vcnId
 	return err
 }
 
@@ -56,15 +56,15 @@ func (s *ClusterScope) IsVcnEquals(actual *core.Vcn, desired infrastructurev1bet
 }
 
 func (s *ClusterScope) GetVcnName() string {
-	if s.OCICluster.Spec.NetworkSpec.Vcn.Name != "" {
-		return s.OCICluster.Spec.NetworkSpec.Vcn.Name
+	if s.OCIClusterBase.GetVCN().Name != "" {
+		return s.OCIClusterBase.GetVCN().Name
 	}
-	return fmt.Sprintf("%s", s.OCICluster.Name)
+	return fmt.Sprintf("%s", s.OCIClusterBase.GetName())
 }
 
 func (s *ClusterScope) GetVcnCidr() string {
-	if s.OCICluster.Spec.NetworkSpec.Vcn.CIDR != "" {
-		return s.OCICluster.Spec.NetworkSpec.Vcn.CIDR
+	if s.OCIClusterBase.GetVCN().CIDR != "" {
+		return s.OCIClusterBase.GetVCN().CIDR
 	}
 	return VcnDefaultCidr
 }
@@ -138,7 +138,7 @@ func (s *ClusterScope) CreateVCN(ctx context.Context, spec infrastructurev1beta1
 	}
 	vcnResponse, err := s.VCNClient.CreateVcn(ctx, core.CreateVcnRequest{
 		CreateVcnDetails: vcnDetails,
-		OpcRetryToken:    ociutil.GetOPCRetryToken("%s-%s", "create-vcn", string(s.OCICluster.GetOCIResourceIdentifier())),
+		OpcRetryToken:    ociutil.GetOPCRetryToken("%s-%s", "create-vcn", string(s.OCIClusterBase.GetOCIResourceIdentifier())),
 	})
 	if err != nil {
 		s.Logger.Error(err, "failed create vcn")
@@ -170,5 +170,5 @@ func (s *ClusterScope) DeleteVCN(ctx context.Context) error {
 }
 
 func (s *ClusterScope) getVcnId() *string {
-	return s.OCICluster.Spec.NetworkSpec.Vcn.ID
+	return s.OCIClusterBase.GetVCN().ID
 }

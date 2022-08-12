@@ -1,3 +1,6 @@
+//go:build e2e
+// +build e2e
+
 /*
  Copyright (c) 2021, 2022 Oracle and/or its affiliates.
 
