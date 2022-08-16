@@ -106,6 +106,22 @@ func (r *OCIManagedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, nil
 	}
 
+	controlPlane := &infrastructurev1beta1.OCIManagedControlPlane{}
+	controlPlaneRef := types.NamespacedName{
+		Name:      cluster.Spec.ControlPlaneRef.Name,
+		Namespace: cluster.Namespace,
+	}
+
+	// Return early if the object or Cluster is paused.
+	if annotations.IsPaused(cluster, ociCluster) {
+		logger.Info("OCIManagedCluster or linked Cluster is marked as paused. Won't reconcile")
+		return ctrl.Result{}, nil
+	}
+
+	if err := r.Get(ctx, controlPlaneRef, controlPlane); err != nil {
+		return reconcile.Result{}, errors.Wrap(err, "failed to get control plane ref")
+	}
+
 	var clusterScope scope.ClusterScopeClient
 
 	clients, err := r.ClientProvider.GetOrBuildClient(regionOverride)
@@ -151,7 +167,7 @@ func (r *OCIManagedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	if err != nil {
 		return reconcile.Result{}, errors.Errorf("failed to create scope: %+v", err)
 	} else {
-		return r.reconcile(ctx, logger, clusterScope, ociCluster)
+		return r.reconcile(ctx, logger, clusterScope, ociCluster, controlPlane)
 	}
 
 }
@@ -176,7 +192,7 @@ func (r *OCIManagedClusterReconciler) reconcileComponent(ctx context.Context, cl
 	return nil
 }
 
-func (r *OCIManagedClusterReconciler) reconcile(ctx context.Context, logger logr.Logger, clusterScope scope.ClusterScopeClient, cluster *infrastructurev1beta1.OCIManagedCluster) (ctrl.Result, error) {
+func (r *OCIManagedClusterReconciler) reconcile(ctx context.Context, logger logr.Logger, clusterScope scope.ClusterScopeClient, cluster *infrastructurev1beta1.OCIManagedCluster, controlPlane *infrastructurev1beta1.OCIManagedControlPlane) (ctrl.Result, error) {
 	// If the OCICluster doesn't have our finalizer, add it.
 	controllerutil.AddFinalizer(cluster, infrastructurev1beta1.ManagedClusterFinalizer)
 
@@ -235,19 +251,26 @@ func (r *OCIManagedClusterReconciler) reconcile(ctx context.Context, logger logr
 	} else {
 		logger.Info("VCN Reconciliation is skipped")
 	}
-
 	conditions.MarkTrue(cluster, infrastructurev1beta1.ClusterReadyCondition)
 	cluster.Status.Ready = true
+	if controlPlane.Spec.ControlPlaneEndpoint != nil {
+		cluster.Spec.ControlPlaneEndpoint = *controlPlane.Spec.ControlPlaneEndpoint
+	}
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *OCIManagedClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
 	log := ctrl.LoggerFrom(ctx)
+	azureManagedControlPlaneMapper, err := OCIManagedControlPlaneToOCIManagedClusterMapper(ctx, r.Client, log)
 	c, err := ctrl.NewControllerManagedBy(mgr).
 		For(&infrastructurev1beta1.OCICluster{}).
-		WithEventFilter(predicates.ResourceNotPaused(log)).              // don't queue reconcile if resource is paused
-		WithEventFilter(predicates.ResourceIsNotExternallyManaged(log)). //the externally managed cluster won't be reconciled
+		WithEventFilter(predicates.ResourceNotPaused(log)). // don't queue reconcile if resource is paused
+		// watch AzureManagedControlPlane resources
+		Watches(
+			&source.Kind{Type: &infrastructurev1beta1.OCIManagedControlPlane{}},
+			handler.EnqueueRequestsFromMapFunc(azureManagedControlPlaneMapper),
+		).
 		Build(r)
 	if err != nil {
 		return errors.Wrapf(err, "error creating controller")
@@ -399,4 +422,50 @@ func (r *OCIManagedClusterReconciler) reconcileDelete(ctx context.Context, logge
 	controllerutil.RemoveFinalizer(cluster, v1beta1.ManagedClusterFinalizer)
 
 	return reconcile.Result{}, nil
+}
+
+func OCIManagedControlPlaneToOCIManagedClusterMapper(ctx context.Context, c client.Client, log logr.Logger) (handler.MapFunc, error) {
+	return func(o client.Object) []ctrl.Request {
+		ctx, cancel := context.WithTimeout(ctx, DefaultMappingTimeout)
+		defer cancel()
+
+		ociManagedControlPlane, ok := o.(*infrastructurev1beta1.OCIManagedControlPlane)
+		if !ok {
+			log.Error(errors.Errorf("expected an OCIManagedControlPlane, got %T instead", o), "failed to map OCIManagedControlPlane")
+			return nil
+		}
+
+		log = log.WithValues("OCIManagedControlPlane", ociManagedControlPlane.Name, "Namespace", ociManagedControlPlane.Namespace)
+
+		// Don't handle deleted AzureManagedControlPlanes
+		if !ociManagedControlPlane.ObjectMeta.DeletionTimestamp.IsZero() {
+			log.V(4).Info("AzureManagedControlPlane has a deletion timestamp, skipping mapping.")
+			return nil
+		}
+
+		cluster, err := util.GetOwnerCluster(ctx, c, ociManagedControlPlane.ObjectMeta)
+		if err != nil {
+			log.Error(err, "failed to get the owning cluster")
+			return nil
+		}
+
+		if cluster == nil {
+			log.Error(err, "cluster has not set owner ref yet")
+			return nil
+		}
+
+		ref := cluster.Spec.InfrastructureRef
+		if ref == nil || ref.Name == "" {
+			return nil
+		}
+
+		return []ctrl.Request{
+			{
+				NamespacedName: types.NamespacedName{
+					Namespace: ref.Namespace,
+					Name:      ref.Name,
+				},
+			},
+		}
+	}, nil
 }

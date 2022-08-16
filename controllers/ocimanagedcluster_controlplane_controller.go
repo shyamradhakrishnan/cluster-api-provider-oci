@@ -116,6 +116,19 @@ func (r *OCIManagedClusterControlPlaneReconciler) Reconcile(ctx context.Context,
 		return ctrl.Result{}, nil
 	}
 
+	if !ociManagedCluster.Status.Ready {
+		logger.Info("Cluster infrastructure is not ready")
+		r.Recorder.Eventf(controlPlane, corev1.EventTypeWarning, "ClusterInfrastructureNotReady", "Cluster infrastructure is not ready")
+		return ctrl.Result{}, nil
+	}
+
+	// Return early if the object or Cluster is paused.
+	if annotations.IsPaused(cluster, ociManagedCluster) {
+		r.Recorder.Eventf(controlPlane, corev1.EventTypeNormal, "ClusterPaused", "Cluster is paused")
+		logger.Info("OCICluster or linked Cluster is marked as paused. Won't reconcile")
+		return ctrl.Result{}, nil
+	}
+
 	regionOverride := r.Region
 	if len(ociManagedCluster.Spec.Region) > 0 {
 		regionOverride = ociManagedCluster.Spec.Region
@@ -158,6 +171,7 @@ func (r *OCIManagedClusterControlPlaneReconciler) Reconcile(ctx context.Context,
 		ContainerEngineClient:  clients.ContainerEngineClient,
 		Region:                 regionOverride,
 		OCIManagedControlPlane: controlPlane,
+		BaseClient:             clients.BaseClient,
 	})
 
 	if err != nil {
@@ -218,15 +232,20 @@ func (r *OCIManagedClusterControlPlaneReconciler) reconcile(ctx context.Context,
 	case containerengine.ClusterLifecycleStateActive:
 		controlPlaneScope.Info("Instance is active")
 		if controlPlaneScope.IsControlPlaneEndpointSubnetPrivate() {
-			cluster.Spec.ControlPlaneEndpoint = clusterv1.APIEndpoint{
+			cluster.Spec.ControlPlaneEndpoint = &clusterv1.APIEndpoint{
 				Host: *controlPlane.Endpoints.PrivateEndpoint,
 				Port: 6443,
 			}
 		} else {
-			cluster.Spec.ControlPlaneEndpoint = clusterv1.APIEndpoint{
+			cluster.Spec.ControlPlaneEndpoint = &clusterv1.APIEndpoint{
 				Host: *controlPlane.Endpoints.PublicEndpoint,
 				Port: 6443,
 			}
+		}
+		controlPlaneScope.OCIManagedControlPlane.Status.Ready = true
+		err := controlPlaneScope.ReconcileKubeconfig(ctx, controlPlane)
+		if err != nil {
+			return ctrl.Result{}, err
 		}
 	default:
 		conditions.MarkFalse(cluster, infrastructurev1beta1.InstanceReadyCondition, infrastructurev1beta1.InstanceProvisionFailedReason, clusterv1.ConditionSeverityError, "")
@@ -234,7 +253,7 @@ func (r *OCIManagedClusterControlPlaneReconciler) reconcile(ctx context.Context,
 			"Cluster has invalid lifecycle state %s", controlPlane.LifecycleState)
 		return reconcile.Result{}, errors.New(fmt.Sprintf("Cluster  has invalid lifecycle state %s", controlPlane.LifecycleState))
 	}
-	return ctrl.Result{}, nil
+	return reconcile.Result{RequeueAfter: 300 * time.Second}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -338,8 +357,6 @@ func (r *OCIManagedClusterControlPlaneReconciler) reconcileDelete(ctx context.Co
 		}
 		return reconcile.Result{RequeueAfter: 30 * time.Second}, nil
 	}
-
-	return reconcile.Result{}, nil
 }
 
 func OCIManagedClusterToOCIManagedControlPlaneMapper(ctx context.Context, c client.Client, log logr.Logger) (handler.MapFunc, error) {

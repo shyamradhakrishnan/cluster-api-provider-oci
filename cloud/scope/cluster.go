@@ -22,14 +22,12 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/oracle/cluster-api-provider-oci/cloud/base"
-	"github.com/oracle/cluster-api-provider-oci/cloud/services/vcn"
-
 	"github.com/go-logr/logr"
 	infrastructurev1beta1 "github.com/oracle/cluster-api-provider-oci/api/v1beta1"
 	"github.com/oracle/cluster-api-provider-oci/cloud/ociutil"
 	identityClent "github.com/oracle/cluster-api-provider-oci/cloud/services/identity"
 	nlb "github.com/oracle/cluster-api-provider-oci/cloud/services/networkloadbalancer"
+	"github.com/oracle/cluster-api-provider-oci/cloud/services/vcn"
 	"github.com/oracle/oci-go-sdk/v63/common"
 	"github.com/oracle/oci-go-sdk/v63/identity"
 	"github.com/pkg/errors"
@@ -57,7 +55,7 @@ type ClusterScopeParams struct {
 	Region                string
 	OCIAuthConfigProvider common.ConfigurationProvider
 	ClientProvider        *ClientProvider
-	OCIClusterBase        base.OCIClusterBase
+	OCIClusterBase        OCIClusterBase
 }
 
 type ClusterScope struct {
@@ -70,7 +68,7 @@ type ClusterScope struct {
 	IdentityClient     identityClent.Client
 	Region             string
 	ClientProvider     *ClientProvider
-	OCIClusterBase     base.OCIClusterBase
+	OCIClusterBase     OCIClusterBase
 }
 
 // NewClusterScope creates a ClusterScope given the ClusterScopeParams
@@ -276,7 +274,7 @@ func (s *ClusterScope) GetFreeFormTags() map[string]string {
 	return tags
 }
 
-func (s *ClusterScope) GetOCIClusterBase() base.OCIClusterBase {
+func (s *ClusterScope) GetOCIClusterBase() OCIClusterBase {
 	return s.OCIClusterBase
 }
 

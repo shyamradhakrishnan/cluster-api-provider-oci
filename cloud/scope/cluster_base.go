@@ -1,4 +1,4 @@
-package base
+package scope
 
 import (
 	infrastructurev1beta1 "github.com/oracle/cluster-api-provider-oci/api/v1beta1"

@@ -13,4 +13,5 @@ type Client interface {
 	ListClusters(ctx context.Context, request containerengine.ListClustersRequest) (response containerengine.ListClustersResponse, err error)
 	GetWorkRequest(ctx context.Context, request containerengine.GetWorkRequestRequest) (response containerengine.GetWorkRequestResponse, err error)
 	DeleteCluster(ctx context.Context, request containerengine.DeleteClusterRequest) (response containerengine.DeleteClusterResponse, err error)
+	CreateKubeconfig(ctx context.Context, request containerengine.CreateKubeconfigRequest) (response containerengine.CreateKubeconfigResponse, err error)
 }

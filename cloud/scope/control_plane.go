@@ -2,18 +2,28 @@ package scope
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
 
 	"github.com/go-logr/logr"
 	infrastructurev1beta1 "github.com/oracle/cluster-api-provider-oci/api/v1beta1"
-	"github.com/oracle/cluster-api-provider-oci/cloud/base"
 	"github.com/oracle/cluster-api-provider-oci/cloud/ociutil"
+	baseclient "github.com/oracle/cluster-api-provider-oci/cloud/services/base"
 	"github.com/oracle/cluster-api-provider-oci/cloud/services/containerengine"
 	"github.com/oracle/oci-go-sdk/v63/common"
 	oke "github.com/oracle/oci-go-sdk/v63/containerengine"
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2/klogr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/kubeconfig"
 	"sigs.k8s.io/cluster-api/util/patch"
+	"sigs.k8s.io/cluster-api/util/secret"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -27,7 +37,8 @@ type ControlPlaneScopeParams struct {
 	OCIAuthConfigProvider  common.ConfigurationProvider
 	ClientProvider         *ClientProvider
 	OCIManagedControlPlane *infrastructurev1beta1.OCIManagedControlPlane
-	OCIClusterBase         base.OCIClusterBase
+	OCIClusterBase         OCIClusterBase
+	BaseClient             baseclient.BaseClient
 }
 
 type ControlPlaneScope struct {
@@ -36,10 +47,11 @@ type ControlPlaneScope struct {
 	patchHelper            *patch.Helper
 	Cluster                *clusterv1.Cluster
 	ContainerEngineClient  containerengine.Client
+	BaseClient             baseclient.BaseClient
 	Region                 string
 	ClientProvider         *ClientProvider
 	OCIManagedControlPlane *infrastructurev1beta1.OCIManagedControlPlane
-	OCIClusterBase         base.OCIClusterBase
+	OCIClusterBase         OCIClusterBase
 }
 
 // NewControlPlaneScope creates a ControlPlaneScope given the ControlPlaneScopeParams
@@ -66,6 +78,7 @@ func NewControlPlaneScope(params ControlPlaneScopeParams) (*ControlPlaneScope, e
 		ClientProvider:         params.ClientProvider,
 		OCIClusterBase:         params.OCIClusterBase,
 		OCIManagedControlPlane: params.OCIManagedControlPlane,
+		BaseClient:             params.BaseClient,
 	}, nil
 }
 
@@ -237,4 +250,149 @@ func (s *ControlPlaneScope) DeleteCluster(ctx context.Context) error {
 	req := oke.DeleteClusterRequest{ClusterId: s.OCIManagedControlPlane.Spec.ID}
 	_, err := s.ContainerEngineClient.DeleteCluster(ctx, req)
 	return err
+}
+
+func (s *ControlPlaneScope) createCAPIKubeconfigSecret(ctx context.Context, okeCluster *oke.Cluster, clusterRef types.NamespacedName) error {
+	controllerOwnerRef := *metav1.NewControllerRef(s.OCIManagedControlPlane, infrastructurev1beta1.GroupVersion.WithKind("OCIManagedControlPlane"))
+	req := oke.CreateKubeconfigRequest{ClusterId: s.OCIManagedControlPlane.Spec.ID}
+	response, err := s.ContainerEngineClient.CreateKubeconfig(ctx, req)
+	if err != nil {
+		return err
+	}
+	body, err := ioutil.ReadAll(response.Content)
+	config, err := clientcmd.NewClientConfigFromBytes(body)
+	if err != nil {
+		return err
+	}
+	rawConfig, err := config.RawConfig()
+	if err != nil {
+		return err
+	}
+	userName := getKubeConfigUserName(*okeCluster.Name, false)
+	currentCluster := rawConfig.Clusters[rawConfig.CurrentContext]
+	currentContext := rawConfig.Contexts[rawConfig.CurrentContext]
+
+	cfg, err := createBaseKubeConfig(userName, currentCluster, currentContext.Cluster, rawConfig.CurrentContext)
+
+	token, err := s.BaseClient.GenerateToken(ctx, *okeCluster.Id)
+	if err != nil {
+		return fmt.Errorf("generating presigned token: %w", err)
+	}
+
+	cfg.AuthInfos = map[string]*api.AuthInfo{
+		userName: {
+			Token: token,
+		},
+	}
+
+	out, err := clientcmd.Write(*cfg)
+	s.Logger.Info(fmt.Sprintf("kubeconfig is %s", string(out)))
+	if err != nil {
+		return errors.Wrap(err, "failed to serialize config to yaml")
+	}
+
+	kubeconfigSecret := kubeconfig.GenerateSecretWithOwner(clusterRef, out, controllerOwnerRef)
+	if err := s.client.Create(ctx, kubeconfigSecret); err != nil {
+		return errors.Wrap(err, "failed to create kubeconfig secret")
+	}
+	return err
+
+}
+
+func createBaseKubeConfig(userName string, kubeconfigCluster *api.Cluster, clusterName string, contextName string) (*api.Config, error) {
+
+	cfg := &api.Config{
+		APIVersion: api.SchemeGroupVersion.Version,
+		Clusters: map[string]*api.Cluster{
+			clusterName: {
+				Server:                   kubeconfigCluster.Server,
+				CertificateAuthorityData: kubeconfigCluster.CertificateAuthorityData,
+			},
+		},
+		Contexts: map[string]*api.Context{
+			contextName: {
+				Cluster:  clusterName,
+				AuthInfo: userName,
+			},
+		},
+		CurrentContext: contextName,
+	}
+
+	return cfg, nil
+}
+
+func (s *ControlPlaneScope) ReconcileKubeconfig(ctx context.Context, okeCluster *oke.Cluster) error {
+	clusterRef := types.NamespacedName{
+		Name:      s.Cluster.Name,
+		Namespace: s.Cluster.Namespace,
+	}
+
+	// Create the kubeconfig used by CAPI
+	configSecret, err := secret.GetFromNamespacedName(ctx, s.client, clusterRef, secret.Kubeconfig)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrap(err, "failed to get kubeconfig secret")
+		}
+
+		if createErr := s.createCAPIKubeconfigSecret(
+			ctx,
+			okeCluster,
+			clusterRef,
+		); createErr != nil {
+			return fmt.Errorf("creating kubeconfig secret: %w", err)
+		}
+	} else if updateErr := s.updateCAPIKubeconfigSecret(ctx, configSecret, okeCluster); updateErr != nil {
+		return fmt.Errorf("updating kubeconfig secret: %w", err)
+	}
+
+	// Set initialized to true to indicate the kubconfig has been created
+	s.OCIManagedControlPlane.Status.Initialized = true
+
+	return nil
+}
+
+func (s *ControlPlaneScope) updateCAPIKubeconfigSecret(ctx context.Context, configSecret *corev1.Secret, okeCluster *oke.Cluster) error {
+	data, ok := configSecret.Data[secret.KubeconfigDataName]
+	if !ok {
+		return errors.Errorf("missing key %q in secret data", secret.KubeconfigDataName)
+	}
+
+	config, err := clientcmd.Load(data)
+	if err != nil {
+		return errors.Wrap(err, "failed to convert kubeconfig Secret into a clientcmdapi.Config")
+	}
+
+	token, err := s.BaseClient.GenerateToken(ctx, *okeCluster.Id)
+	if err != nil {
+		return fmt.Errorf("generating presigned token: %w", err)
+	}
+
+	if err != nil {
+		return fmt.Errorf("generating presigned token: %w", err)
+	}
+
+	userName := getKubeConfigUserName(*okeCluster.Name, false)
+	config.AuthInfos[userName].Token = token
+
+	out, err := clientcmd.Write(*config)
+	if err != nil {
+		return errors.Wrap(err, "failed to serialize config to yaml")
+	}
+
+	configSecret.Data[secret.KubeconfigDataName] = out
+
+	err = s.client.Update(ctx, configSecret)
+	if err != nil {
+		return fmt.Errorf("updating kubeconfig secret: %w", err)
+	}
+
+	return nil
+}
+
+func getKubeConfigUserName(clusterName string, isUser bool) string {
+	if isUser {
+		return fmt.Sprintf("%s-user", clusterName)
+	}
+
+	return fmt.Sprintf("%s-capi-admin", clusterName)
 }

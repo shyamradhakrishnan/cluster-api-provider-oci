@@ -64,7 +64,7 @@ type OCIManagedControlPlaneSpec struct {
 
 	// ControlPlaneEndpoint represents the endpoint used to communicate with the control plane.
 	// +optional
-	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
+	ControlPlaneEndpoint *clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
 
 	// Version represents the version of the Kubernetes Cluster Control Plane.
 	Version *string `json:"version,omitempty"`
@@ -159,6 +159,10 @@ type OCIManagedControlPlaneStatus struct {
 	// NetworkSpec encapsulates all things related to OCI network.
 	// +optional
 	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
+	// Initialized denotes whether or not the control plane has the
+	// uploaded kubernetes config-map.
+	// +optional
+	Initialized bool `json:"initialized"`
 }
 
 //+kubebuilder:object:root=true

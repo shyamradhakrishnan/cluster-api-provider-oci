@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/go-logr/logr"
+	"github.com/oracle/cluster-api-provider-oci/cloud/services/base"
 	"github.com/oracle/cluster-api-provider-oci/cloud/services/compute"
 	"github.com/oracle/cluster-api-provider-oci/cloud/services/computemanagement"
 	containerEngineClient "github.com/oracle/cluster-api-provider-oci/cloud/services/containerengine"
@@ -43,6 +44,7 @@ type OCIClients struct {
 	LoadBalancerClient      nlb.NetworkLoadBalancerClient
 	IdentityClient          identityClient.Client
 	ContainerEngineClient   containerEngineClient.Client
+	BaseClient              base.BaseClient
 }
 
 // ClientProvider defines the regional clients
@@ -98,11 +100,33 @@ func (c *ClientProvider) GetOrBuildClient(region string) (OCIClients, error) {
 
 func createClients(region string, oCIAuthConfigProvider common.ConfigurationProvider, logger *logr.Logger) (OCIClients, error) {
 	vcnClient, err := createVncClient(region, oCIAuthConfigProvider, logger)
+	if err != nil {
+		return OCIClients{}, err
+	}
 	lbClient, err := createLbClient(region, oCIAuthConfigProvider, logger)
+	if err != nil {
+		return OCIClients{}, err
+	}
 	identityClient, err := createIdentityClient(region, oCIAuthConfigProvider, logger)
+	if err != nil {
+		return OCIClients{}, err
+	}
 	computeClient, err := createComputeClient(region, oCIAuthConfigProvider, logger)
+	if err != nil {
+		return OCIClients{}, err
+	}
 	computeManagementClient, err := createComputeManagementClient(region, oCIAuthConfigProvider, logger)
+	if err != nil {
+		return OCIClients{}, err
+	}
 	containerEngineClient, err := createContainerEngineClient(region, oCIAuthConfigProvider, logger)
+	if err != nil {
+		return OCIClients{}, err
+	}
+	baseClient, err := createBaseClient(region, oCIAuthConfigProvider, logger)
+	if err != nil {
+		return OCIClients{}, err
+	}
 
 	if err != nil {
 		return OCIClients{}, err
@@ -115,6 +139,7 @@ func createClients(region string, oCIAuthConfigProvider common.ConfigurationProv
 		ComputeClient:           computeClient,
 		ComputeManagementClient: computeManagementClient,
 		ContainerEngineClient:   containerEngineClient,
+		BaseClient:              baseClient,
 	}, err
 }
 
@@ -182,4 +207,14 @@ func createContainerEngineClient(region string, ociAuthConfigProvider common.Con
 	containerEngineClient.SetRegion(region)
 
 	return &containerEngineClient, nil
+}
+
+func createBaseClient(region string, ociAuthConfigProvider common.ConfigurationProvider, logger *logr.Logger) (*base.Client, error) {
+	baseClient, err := base.NewBaseClient(ociAuthConfigProvider, logger)
+	if err != nil {
+		logger.Error(err, "unable to create OCI Base Client")
+		return nil, err
+	}
+
+	return baseClient, nil
 }
