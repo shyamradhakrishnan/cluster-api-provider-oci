@@ -69,5 +69,5 @@ spec:
   nodeShape: "${OCI_MANAGED_NODE_SHAPE}"
   sshPublicKey: "${OCI_SSH_KEY}"
   nodeSourceViaImage:
-    imageId: "${OCI_MANAGED_NODE_IMAGED_ID}"
+    imageId: "${OCI_MANAGED_NODE_IMAGE_ID}"
 ---
