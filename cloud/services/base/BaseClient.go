@@ -74,10 +74,8 @@ func (c *Client) GenerateToken(ctx context.Context, clusterID string) (string, e
 	for _, header := range requiredHeaders {
 		query.Set(header, req.Header.Get(header))
 	}
-	if err != nil {
-		return "", err
-	}
 	url.RawQuery = query.Encode()
-	c.logger.Info(fmt.Sprintf("Raw query is %s", url.RawQuery))
-	return base64.URLEncoding.EncodeToString([]byte(url.String())), nil
+	encodedStr := base64.URLEncoding.EncodeToString([]byte(url.String()))
+	c.logger.Info(fmt.Sprintf("encoded string is %s", encodedStr))
+	return encodedStr, nil
 }
