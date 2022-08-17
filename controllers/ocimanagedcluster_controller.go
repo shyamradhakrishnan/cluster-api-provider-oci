@@ -106,20 +106,10 @@ func (r *OCIManagedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, nil
 	}
 
-	controlPlane := &infrastructurev1beta1.OCIManagedControlPlane{}
-	controlPlaneRef := types.NamespacedName{
-		Name:      cluster.Spec.ControlPlaneRef.Name,
-		Namespace: cluster.Namespace,
-	}
-
 	// Return early if the object or Cluster is paused.
 	if annotations.IsPaused(cluster, ociCluster) {
 		logger.Info("OCIManagedCluster or linked Cluster is marked as paused. Won't reconcile")
 		return ctrl.Result{}, nil
-	}
-
-	if err := r.Get(ctx, controlPlaneRef, controlPlane); err != nil {
-		return reconcile.Result{}, errors.Wrap(err, "failed to get control plane ref")
 	}
 
 	var clusterScope scope.ClusterScopeClient
@@ -167,7 +157,7 @@ func (r *OCIManagedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	if err != nil {
 		return reconcile.Result{}, errors.Errorf("failed to create scope: %+v", err)
 	} else {
-		return r.reconcile(ctx, logger, clusterScope, ociCluster, controlPlane)
+		return r.reconcile(ctx, logger, clusterScope, ociCluster, cluster)
 	}
 
 }
@@ -192,69 +182,79 @@ func (r *OCIManagedClusterReconciler) reconcileComponent(ctx context.Context, cl
 	return nil
 }
 
-func (r *OCIManagedClusterReconciler) reconcile(ctx context.Context, logger logr.Logger, clusterScope scope.ClusterScopeClient, cluster *infrastructurev1beta1.OCIManagedCluster, controlPlane *infrastructurev1beta1.OCIManagedControlPlane) (ctrl.Result, error) {
+func (r *OCIManagedClusterReconciler) reconcile(ctx context.Context, logger logr.Logger, clusterScope scope.ClusterScopeClient, ociManagedCluster *infrastructurev1beta1.OCIManagedCluster, cluster *clusterv1.Cluster) (ctrl.Result, error) {
 	// If the OCICluster doesn't have our finalizer, add it.
-	controllerutil.AddFinalizer(cluster, infrastructurev1beta1.ManagedClusterFinalizer)
+	controllerutil.AddFinalizer(ociManagedCluster, infrastructurev1beta1.ManagedClusterFinalizer)
+
+	controlPlane := &infrastructurev1beta1.OCIManagedControlPlane{}
+	controlPlaneRef := types.NamespacedName{
+		Name:      cluster.Spec.ControlPlaneRef.Name,
+		Namespace: cluster.Namespace,
+	}
+
+	if err := r.Get(ctx, controlPlaneRef, controlPlane); err != nil {
+		return reconcile.Result{}, errors.Wrap(err, "failed to get control plane ref")
+	}
 
 	// This below if condition specifies if the network related infrastructure needs to be reconciled. Any new
 	// network related reconcilication should happen in this if condition
-	if !cluster.Spec.NetworkSpec.SkipNetworkManagement {
-		if err := r.reconcileComponent(ctx, cluster, clusterScope.ReconcileDRG, "DRG",
+	if !ociManagedCluster.Spec.NetworkSpec.SkipNetworkManagement {
+		if err := r.reconcileComponent(ctx, ociManagedCluster, clusterScope.ReconcileDRG, "DRG",
 			infrastructurev1beta1.DrgReconciliationFailedReason, infrastructurev1beta1.DrgEventReady); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if err := r.reconcileComponent(ctx, cluster, clusterScope.ReconcileVCN, "VCN",
+		if err := r.reconcileComponent(ctx, ociManagedCluster, clusterScope.ReconcileVCN, "VCN",
 			infrastructurev1beta1.VcnReconciliationFailedReason, infrastructurev1beta1.VcnEventReady); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if err := r.reconcileComponent(ctx, cluster, clusterScope.ReconcileInternetGateway, "Internet Gateway",
+		if err := r.reconcileComponent(ctx, ociManagedCluster, clusterScope.ReconcileInternetGateway, "Internet Gateway",
 			infrastructurev1beta1.InternetGatewayReconciliationFailedReason, infrastructurev1beta1.InternetGatewayEventReady); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if err := r.reconcileComponent(ctx, cluster, clusterScope.ReconcileNatGateway, "NAT Gateway",
+		if err := r.reconcileComponent(ctx, ociManagedCluster, clusterScope.ReconcileNatGateway, "NAT Gateway",
 			infrastructurev1beta1.NatGatewayReconciliationFailedReason, infrastructurev1beta1.NatEventReady); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if err := r.reconcileComponent(ctx, cluster, clusterScope.ReconcileServiceGateway, "Service Gateway",
+		if err := r.reconcileComponent(ctx, ociManagedCluster, clusterScope.ReconcileServiceGateway, "Service Gateway",
 			infrastructurev1beta1.ServiceGatewayReconciliationFailedReason, infrastructurev1beta1.ServiceGatewayEventReady); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if err := r.reconcileComponent(ctx, cluster, clusterScope.ReconcileNSG, "Network Security Group",
+		if err := r.reconcileComponent(ctx, ociManagedCluster, clusterScope.ReconcileNSG, "Network Security Group",
 			infrastructurev1beta1.NSGReconciliationFailedReason, infrastructurev1beta1.NetworkSecurityEventReady); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if err := r.reconcileComponent(ctx, cluster, clusterScope.ReconcileRouteTable, "Route Table",
+		if err := r.reconcileComponent(ctx, ociManagedCluster, clusterScope.ReconcileRouteTable, "Route Table",
 			infrastructurev1beta1.RouteTableReconciliationFailedReason, infrastructurev1beta1.RouteTableEventReady); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if err := r.reconcileComponent(ctx, cluster, clusterScope.ReconcileSubnet, "Subnet",
+		if err := r.reconcileComponent(ctx, ociManagedCluster, clusterScope.ReconcileSubnet, "Subnet",
 			infrastructurev1beta1.SubnetReconciliationFailedReason, infrastructurev1beta1.SubnetEventReady); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if err := r.reconcileComponent(ctx, cluster, clusterScope.ReconcileDRGVCNAttachment, "DRGVCNAttachment",
+		if err := r.reconcileComponent(ctx, ociManagedCluster, clusterScope.ReconcileDRGVCNAttachment, "DRGVCNAttachment",
 			infrastructurev1beta1.DRGVCNAttachmentReconciliationFailedReason, infrastructurev1beta1.DRGVCNAttachmentEventReady); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if err := r.reconcileComponent(ctx, cluster, clusterScope.ReconcileDRGRPCAttachment, "DRGRPCAttachment",
+		if err := r.reconcileComponent(ctx, ociManagedCluster, clusterScope.ReconcileDRGRPCAttachment, "DRGRPCAttachment",
 			infrastructurev1beta1.DRGRPCAttachmentReconciliationFailedReason, infrastructurev1beta1.DRGRPCAttachmentEventReady); err != nil {
 			return ctrl.Result{}, err
 		}
 	} else {
 		logger.Info("VCN Reconciliation is skipped")
 	}
-	conditions.MarkTrue(cluster, infrastructurev1beta1.ClusterReadyCondition)
-	cluster.Status.Ready = true
+	conditions.MarkTrue(ociManagedCluster, infrastructurev1beta1.ClusterReadyCondition)
+	ociManagedCluster.Status.Ready = true
 	if controlPlane.Spec.ControlPlaneEndpoint != nil {
-		cluster.Spec.ControlPlaneEndpoint = *controlPlane.Spec.ControlPlaneEndpoint
+		ociManagedCluster.Spec.ControlPlaneEndpoint = *controlPlane.Spec.ControlPlaneEndpoint
 	}
 	return ctrl.Result{}, nil
 }

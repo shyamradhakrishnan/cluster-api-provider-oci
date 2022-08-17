@@ -405,7 +405,7 @@ func (c *OCIManagedCluster) GetWorkerDefaultIngressRules() []IngressSecurityRule
 		{
 			IngressSecurityRule: IngressSecurityRule{
 				Description: common.String("Load Balancer to Worker nodes node ports."),
-				Protocol:    common.String("all"),
+				Protocol:    common.String("6"),
 				TcpOptions: &TcpOptions{
 					DestinationPortRange: &PortRange{
 						Max: common.Int(32767),
