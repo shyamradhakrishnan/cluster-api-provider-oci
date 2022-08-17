@@ -1053,7 +1053,7 @@ func (in *OCIManagedClusterList) DeepCopyInto(out *OCIManagedClusterList) {
 	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
-		*out = make([]OCICluster, len(*in))
+		*out = make([]OCIManagedCluster, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -1175,7 +1175,7 @@ func (in *OCIManagedControlPlaneList) DeepCopyInto(out *OCIManagedControlPlaneLi
 	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
-		*out = make([]OCICluster, len(*in))
+		*out = make([]OCIManagedControlPlane, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -1290,7 +1290,7 @@ func (in *OCIManagedMachinePoolList) DeepCopyInto(out *OCIManagedMachinePoolList
 	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
-		*out = make([]OCICluster, len(*in))
+		*out = make([]OCIManagedMachinePool, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
