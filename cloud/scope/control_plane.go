@@ -344,10 +344,10 @@ func (s *ControlPlaneScope) ReconcileKubeconfig(ctx context.Context, okeCluster 
 			okeCluster,
 			clusterRef,
 		); createErr != nil {
-			return fmt.Errorf("creating kubeconfig secret: %w", err)
+			return fmt.Errorf("creating kubeconfig secret: %w", createErr)
 		}
 	} else if updateErr := s.updateCAPIKubeconfigSecret(ctx, configSecret, okeCluster); updateErr != nil {
-		return fmt.Errorf("updating kubeconfig secret: %w", err)
+		return fmt.Errorf("updating kubeconfig secret: %w", updateErr)
 	}
 
 	// Set initialized to true to indicate the kubconfig has been created
