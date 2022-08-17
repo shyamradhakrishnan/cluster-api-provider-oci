@@ -47,7 +47,7 @@ func (c *OCIManagedCluster) Default() {
 	}
 	if !c.Spec.NetworkSpec.SkipNetworkManagement {
 		if len(c.Spec.NetworkSpec.Vcn.Subnets) == 0 {
-			subnets := make([]*Subnet, 4)
+			subnets := make([]*Subnet, 0)
 			subnets = append(subnets, &Subnet{
 				Role: ControlPlaneEndpointRole,
 				Name: ControlPlaneEndpointDefaultName,
@@ -76,7 +76,7 @@ func (c *OCIManagedCluster) Default() {
 			c.Spec.NetworkSpec.Vcn.Subnets = subnets
 		}
 		if len(c.Spec.NetworkSpec.Vcn.NetworkSecurityGroups) == 0 {
-			nsgs := make([]*NSG, 4)
+			nsgs := make([]*NSG, 0)
 			nsgs = append(nsgs, &NSG{
 				Role:         ControlPlaneEndpointRole,
 				Name:         ControlPlaneEndpointDefaultName,

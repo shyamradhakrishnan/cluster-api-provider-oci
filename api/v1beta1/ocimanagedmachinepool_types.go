@@ -23,7 +23,7 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
-// OCIManagedMachinePool defines the desired state of an OCI managed machine pool.
+// OCIManagedMachinePoolSpec defines the desired state of an OCI managed machine pool.
 // An OCIManagedMachinePool translates to an OKE NodePool.
 // The properties are generated from https://docs.oracle.com/en-us/iaas/api/#/en/containerengine/20180222/datatypes/CreateNodePoolDetails
 type OCIManagedMachinePoolSpec struct {
@@ -42,7 +42,7 @@ type OCIManagedMachinePoolSpec struct {
 
 	// NodeShape defines the name of the node shape of the nodes in the node pool.
 	// +optional
-	NodeShape string `json:"NodeShape,omitempty"`
+	NodeShape string `json:"nodeShape,omitempty"`
 
 	// NodeShapeConfig defines the configuration of the shape to launch nodes in the node pool.
 	// +optional

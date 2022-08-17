@@ -35,14 +35,10 @@ spec:
           metadata:
             type: object
           spec:
-            description: OCIManagedMachinePool defines the desired state of an OCI
-              managed machine pool. An OCIManagedMachinePool translates to an OKE
-              NodePool. The properties are generated from https://docs.oracle.com/en-us/iaas/api/#/en/containerengine/20180222/datatypes/CreateNodePoolDetails
+            description: OCIManagedMachinePoolSpec defines the desired state of an
+              OCI managed machine pool. An OCIManagedMachinePool translates to an
+              OKE NodePool. The properties are generated from https://docs.oracle.com/en-us/iaas/api/#/en/containerengine/20180222/datatypes/CreateNodePoolDetails
             properties:
-              NodeShape:
-                description: NodeShape defines the name of the node shape of the nodes
-                  in the node pool.
-                type: string
               name:
                 description: Name of the OKE NodePool. Will bet set to the MachinePool
                   name if not defined.
@@ -120,6 +116,10 @@ spec:
                         type: array
                     type: object
                 type: object
+              nodeShape:
+                description: NodeShape defines the name of the node shape of the nodes
+                  in the node pool.
+                type: string
               nodeShapeConfig:
                 description: NodeShapeConfig defines the configuration of the shape
                   to launch nodes in the node pool.
