@@ -275,24 +275,27 @@ func (s *ControlPlaneScope) createCAPIKubeconfigSecret(ctx context.Context, okeC
 
 	cfg, err := createBaseKubeConfig(userName, currentCluster, currentContext.Cluster, rawConfig.CurrentContext)
 
+	s.Logger.Info("line1")
 	token, err := s.BaseClient.GenerateToken(ctx, *okeCluster.Id)
 	if err != nil {
 		return fmt.Errorf("generating presigned token: %w", err)
 	}
-
+	s.Logger.Info("line2", "token", token)
 	cfg.AuthInfos = map[string]*api.AuthInfo{
 		userName: {
 			Token: token,
 		},
 	}
+	s.Logger.Info("line3")
 
 	out, err := clientcmd.Write(*cfg)
 	s.Logger.Info(fmt.Sprintf("kubeconfig is %s", string(out)))
 	if err != nil {
 		return errors.Wrap(err, "failed to serialize config to yaml")
 	}
-
+	s.Logger.Info("line4")
 	kubeconfigSecret := kubeconfig.GenerateSecretWithOwner(clusterRef, out, controllerOwnerRef)
+	s.Logger.Info("line5")
 	s.Logger.Info("kubeconfig", "config", kubeconfigSecret)
 	if err := s.client.Create(ctx, kubeconfigSecret); err != nil {
 		return errors.Wrap(err, "failed to create kubeconfig secret")
