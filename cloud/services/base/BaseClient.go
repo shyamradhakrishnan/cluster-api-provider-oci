@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/oracle/oci-go-sdk/v63/common"
@@ -55,6 +56,7 @@ func (c *Client) GenerateToken(ctx context.Context, clusterID string) (string, e
 	c.logger.Info(fmt.Sprintf("Containerengine endpoint is %s", endpoint))
 
 	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	req.Header.Set("date", time.Now().UTC().Format(http.TimeFormat))
 	if err != nil {
 		return "", err
 	}
@@ -70,10 +72,6 @@ func (c *Client) GenerateToken(ctx context.Context, clusterID string) (string, e
 	url := req.URL
 	query := url.Query()
 	for _, header := range requiredHeaders {
-		query.Set(header, req.Header.Get(header))
-	}
-
-	for _, header := range optionalHeaders {
 		query.Set(header, req.Header.Get(header))
 	}
 	if err != nil {
