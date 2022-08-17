@@ -80,5 +80,6 @@ func (c *Client) GenerateToken(ctx context.Context, clusterID string) (string, e
 		return "", err
 	}
 	body, err := ioutil.ReadAll(resp.Body)
+	c.logger.Info(fmt.Sprintf("Token is %s", string(body)))
 	return string(body), nil
 }
