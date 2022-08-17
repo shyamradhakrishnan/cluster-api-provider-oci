@@ -232,12 +232,12 @@ func (r *OCIManagedClusterControlPlaneReconciler) reconcile(ctx context.Context,
 	case containerengine.ClusterLifecycleStateActive:
 		controlPlaneScope.Info("Control plane is active", "endpoints", controlPlane.Endpoints)
 		if controlPlaneScope.IsControlPlaneEndpointSubnetPublic() {
-			cluster.Spec.ControlPlaneEndpoint = &clusterv1.APIEndpoint{
+			cluster.Spec.ControlPlaneEndpoint = clusterv1.APIEndpoint{
 				Host: *controlPlane.Endpoints.PublicEndpoint,
 				Port: 6443,
 			}
 		} else {
-			cluster.Spec.ControlPlaneEndpoint = &clusterv1.APIEndpoint{
+			cluster.Spec.ControlPlaneEndpoint = clusterv1.APIEndpoint{
 				Host: *controlPlane.Endpoints.PrivateEndpoint,
 				Port: 6443,
 			}

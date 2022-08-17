@@ -253,8 +253,8 @@ func (r *OCIManagedClusterReconciler) reconcile(ctx context.Context, logger logr
 	}
 	conditions.MarkTrue(ociManagedCluster, infrastructurev1beta1.ClusterReadyCondition)
 	ociManagedCluster.Status.Ready = true
-	if controlPlane.Spec.ControlPlaneEndpoint != nil {
-		ociManagedCluster.Spec.ControlPlaneEndpoint = *controlPlane.Spec.ControlPlaneEndpoint
+	if controlPlane.Status.Ready {
+		ociManagedCluster.Spec.ControlPlaneEndpoint = controlPlane.Spec.ControlPlaneEndpoint
 	}
 	return ctrl.Result{}, nil
 }

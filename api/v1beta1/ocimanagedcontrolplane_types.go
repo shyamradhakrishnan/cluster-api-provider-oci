@@ -64,7 +64,7 @@ type OCIManagedControlPlaneSpec struct {
 
 	// ControlPlaneEndpoint represents the endpoint used to communicate with the control plane.
 	// +optional
-	ControlPlaneEndpoint *clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
+	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
 
 	// Version represents the version of the Kubernetes Cluster Control Plane.
 	Version *string `json:"version,omitempty"`
