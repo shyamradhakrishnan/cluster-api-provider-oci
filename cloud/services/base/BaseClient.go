@@ -2,7 +2,6 @@ package base
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -76,8 +75,7 @@ func (c *Client) GenerateToken(ctx context.Context, clusterID string) (string, e
 		query.Set(header, req.Header.Get(header))
 	}
 	url.RawQuery = query.Encode()
-	encodedStr := base64.URLEncoding.EncodeToString([]byte(url.String()))
-	resp, err := http.Get(encodedStr)
+	resp, err := http.Get(url.String())
 	if err != nil {
 		return "", err
 	}
