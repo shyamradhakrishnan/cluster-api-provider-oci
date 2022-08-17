@@ -160,7 +160,7 @@ func (r *OCIManagedClusterControlPlaneReconciler) Reconcile(ctx context.Context,
 	var controlPlaneScope *scope.ControlPlaneScope
 
 	clusterBase := scope.OCIManagedCluster{
-		OCICluster: ociManagedCluster,
+		OCIManagedCluster: ociManagedCluster,
 	}
 	controlPlaneScope, err = scope.NewControlPlaneScope(scope.ControlPlaneScopeParams{
 		Client:                 r.Client,
