@@ -583,7 +583,7 @@ func (c *OCIManagedCluster) GetLBServiceDefaultEgressRules() []EgressSecurityRul
 		{
 			EgressSecurityRule: EgressSecurityRule{
 				Description: common.String("Pod to Kubernetes API endpoint communication (when using VCN-native pod networking)."),
-				Protocol:    common.String("all"),
+				Protocol:    common.String("6"),
 				TcpOptions: &TcpOptions{
 					DestinationPortRange: &PortRange{
 						Max: common.Int(32767),
