@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/go-logr/logr"
@@ -12,10 +11,18 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	// list of required headers for generation and parsing.
+	requiredHeaders = []string{"date", "authorization"}
+
+	optionalHeaders = []string{"opc-obo-token", "x-cross-tenancy-request"}
+)
+
 type Client struct {
 	endpoint string
 	client   common.BaseClient
 	logger   *logr.Logger
+	signer   common.HTTPRequestSigner
 }
 
 // NewBaseClient creates a new base client
@@ -28,12 +35,15 @@ func NewBaseClient(configProvider common.ConfigurationProvider, logger *logr.Log
 	endpoint := common.StringToRegion(region).EndpointForTemplate("containerengine", "containerengine.{region}.oci.{secondLevelDomain}")
 
 	baseClient, err := common.NewClientWithConfig(configProvider)
+
+	signer := common.DefaultRequestSigner(configProvider)
 	baseClient.Host = endpoint
 
 	return &Client{
 		endpoint: endpoint,
 		client:   baseClient,
 		logger:   logger,
+		signer:   signer,
 	}, err
 }
 
@@ -43,14 +53,29 @@ func (c *Client) GenerateToken(ctx context.Context, clusterID string) (string, e
 		c.endpoint,
 		clusterID)
 	c.logger.Info(fmt.Sprintf("Containerengine endpoint is %s", endpoint))
+
 	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 	if err != nil {
 		return "", err
 	}
-	resp, err := c.client.Call(ctx, req)
+
+	err = c.signer.Sign(req)
+
 	if err != nil {
 		return "", err
 	}
-	body, err := ioutil.ReadAll(resp.Body)
-	return base64.URLEncoding.EncodeToString([]byte(body)), nil
+	url := req.URL
+	query := url.Query()
+	for _, header := range requiredHeaders {
+		query.Set(header, req.Header.Get(header))
+	}
+
+	for _, header := range optionalHeaders {
+		query.Set(header, req.Header.Get(header))
+	}
+	if err != nil {
+		return "", err
+	}
+	url.RawQuery = query.Encode()
+	return base64.URLEncoding.EncodeToString([]byte(url.String())), nil
 }
