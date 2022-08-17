@@ -6,15 +6,15 @@ import (
 )
 
 type OCIManagedCluster struct {
-	OCICluster *infrastructurev1beta1.OCIManagedCluster
+	OCIManagedCluster *infrastructurev1beta1.OCIManagedCluster
 }
 
 func (c OCIManagedCluster) GetOCIResourceIdentifier() string {
-	return c.OCICluster.Spec.OCIResourceIdentifier
+	return c.OCIManagedCluster.Spec.OCIResourceIdentifier
 }
 
 func (c OCIManagedCluster) GetName() string {
-	return c.OCICluster.Name
+	return c.OCIManagedCluster.Name
 }
 
 func (c OCIManagedCluster) GetOCIClusterStatus() *infrastructurev1beta1.OCIClusterStatus {
@@ -22,27 +22,27 @@ func (c OCIManagedCluster) GetOCIClusterStatus() *infrastructurev1beta1.OCIClust
 }
 
 func (c OCIManagedCluster) GetDefinedTags() map[string]map[string]string {
-	return c.OCICluster.Spec.DefinedTags
+	return c.OCIManagedCluster.Spec.DefinedTags
 }
 
 func (c OCIManagedCluster) GetCompartmentId() string {
-	return c.OCICluster.Spec.CompartmentId
+	return c.OCIManagedCluster.Spec.CompartmentId
 }
 
 func (c OCIManagedCluster) GetFreeformTags() map[string]string {
-	return c.OCICluster.Spec.FreeformTags
+	return c.OCIManagedCluster.Spec.FreeformTags
 }
 
 func (c OCIManagedCluster) GetDRG() *infrastructurev1beta1.DRG {
-	return c.OCICluster.Spec.NetworkSpec.VCNPeering.DRG
+	return c.OCIManagedCluster.Spec.NetworkSpec.VCNPeering.DRG
 }
 
 func (c OCIManagedCluster) GetVCNPeering() *infrastructurev1beta1.VCNPeering {
-	return c.OCICluster.Spec.NetworkSpec.VCNPeering
+	return c.OCIManagedCluster.Spec.NetworkSpec.VCNPeering
 }
 
 func (c OCIManagedCluster) GetVCN() *infrastructurev1beta1.VCN {
-	return &c.OCICluster.Spec.NetworkSpec.Vcn
+	return &c.OCIManagedCluster.Spec.NetworkSpec.Vcn
 }
 
 func (c OCIManagedCluster) GetAPIServerLB() *infrastructurev1beta1.LoadBalancer {
@@ -50,9 +50,9 @@ func (c OCIManagedCluster) GetAPIServerLB() *infrastructurev1beta1.LoadBalancer 
 }
 
 func (c OCIManagedCluster) GetNetworkSpec() *infrastructurev1beta1.NetworkSpec {
-	return &c.OCICluster.Spec.NetworkSpec
+	return &c.OCIManagedCluster.Spec.NetworkSpec
 }
 
 func (c OCIManagedCluster) SetControlPlaneEndpoint(endpoint clusterv1.APIEndpoint) {
-	c.OCICluster.Spec.ControlPlaneEndpoint = endpoint
+	c.OCIManagedCluster.Spec.ControlPlaneEndpoint = endpoint
 }
