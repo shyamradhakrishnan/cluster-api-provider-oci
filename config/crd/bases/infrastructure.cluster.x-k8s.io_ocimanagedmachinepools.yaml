@@ -145,8 +145,7 @@ spec:
                   imageId:
                     description: ImageId defines the OCID of the image used to boot
                       the node.
-                    format: int64
-                    type: integer
+                    type: string
                 type: object
               sshPublicKey:
                 description: SshPublicKey defines the SSH public key on each node
