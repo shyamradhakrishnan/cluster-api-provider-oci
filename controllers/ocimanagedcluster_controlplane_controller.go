@@ -53,7 +53,7 @@ const (
 	DefaultMappingTimeout = 60 * time.Second
 )
 
-// OCIManagedClusterControlPlaneReconciler reconciles a OciCluster object
+// OCIManagedClusterControlPlaneReconciler reconciles a OCIManagedControlPlane object
 type OCIManagedClusterControlPlaneReconciler struct {
 	client.Client
 	Scheme         *runtime.Scheme
@@ -100,7 +100,7 @@ func (r *OCIManagedClusterControlPlaneReconciler) Reconcile(ctx context.Context,
 	// Return early if the object or Cluster is paused.
 	if annotations.IsPaused(cluster, controlPlane) {
 		r.Recorder.Eventf(controlPlane, corev1.EventTypeNormal, "ClusterPaused", "Cluster is paused")
-		logger.Info("OCICluster or linked Cluster is marked as paused. Won't reconcile")
+		logger.Info("OCIManagedCluster or linked Cluster is marked as paused. Won't reconcile")
 		return ctrl.Result{}, nil
 	}
 
@@ -125,7 +125,7 @@ func (r *OCIManagedClusterControlPlaneReconciler) Reconcile(ctx context.Context,
 	// Return early if the object or Cluster is paused.
 	if annotations.IsPaused(cluster, ociManagedCluster) {
 		r.Recorder.Eventf(controlPlane, corev1.EventTypeNormal, "ClusterPaused", "Cluster is paused")
-		logger.Info("OCICluster or linked Cluster is marked as paused. Won't reconcile")
+		logger.Info("OCIManagedCluster or linked Cluster is marked as paused. Won't reconcile")
 		return ctrl.Result{}, nil
 	}
 
@@ -147,7 +147,7 @@ func (r *OCIManagedClusterControlPlaneReconciler) Reconcile(ctx context.Context,
 		return ctrl.Result{}, errors.Wrap(err, "failed to init patch helper")
 	}
 
-	// Always close the scope when exiting this function so we can persist any OCICluster changes.
+	// Always close the scope when exiting this function so we can persist any OCIManagedCluster changes.
 	defer func() {
 		logger.Info("Closing cluster scope")
 		conditions.SetSummary(controlPlane)
@@ -200,7 +200,7 @@ func (r *OCIManagedClusterControlPlaneReconciler) reconcileComponent(ctx context
 		r.Recorder.Event(controlPlane, corev1.EventTypeWarning, "ReconcileError", errors.Wrapf(err,
 			fmt.Sprintf("failed to reconcile %s", componentName)).Error())
 		conditions.MarkFalse(controlPlane, infrastructurev1beta1.ClusterReadyCondition, failReason, clusterv1.ConditionSeverityError, "")
-		return errors.Wrapf(err, "failed to reconcile %s for OCICluster %s/%s", componentName, controlPlane.Namespace,
+		return errors.Wrapf(err, "failed to reconcile %s for OCIManagedCluster %s/%s", componentName, controlPlane.Namespace,
 			controlPlane.Name)
 	}
 
@@ -212,7 +212,7 @@ func (r *OCIManagedClusterControlPlaneReconciler) reconcileComponent(ctx context
 }
 
 func (r *OCIManagedClusterControlPlaneReconciler) reconcile(ctx context.Context, logger logr.Logger, controlPlaneScope *scope.ControlPlaneScope, cluster *infrastructurev1beta1.OCIManagedControlPlane) (ctrl.Result, error) {
-	// If the OCICluster doesn't have our finalizer, add it.
+	// If the OCIManagedCluster doesn't have our finalizer, add it.
 	controllerutil.AddFinalizer(cluster, infrastructurev1beta1.ControlPlaneFinalizer)
 
 	controlPlane, err := controlPlaneScope.GetOrCreateControlPlane(ctx)
@@ -311,7 +311,7 @@ func (r *OCIManagedClusterControlPlaneReconciler) clusterToInfrastructureMapFunc
 		}
 
 		if annotations.IsExternallyManaged(ociCluster) {
-			log.V(4).Info("OCICluster is externally managed, skipping mapping.")
+			log.V(4).Info("OCIManagedCluster is externally managed, skipping mapping.")
 			return nil
 		}
 

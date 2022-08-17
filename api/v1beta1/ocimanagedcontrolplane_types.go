@@ -183,7 +183,7 @@ type OCIManagedControlPlane struct {
 type OCIManagedControlPlaneList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []OCICluster `json:"items"`
+	Items           []OCIManagedControlPlane `json:"items"`
 }
 
 // GetConditions returns the list of conditions for an OCICluster API object.
