@@ -61,6 +61,9 @@ func (c *Client) GenerateToken(ctx context.Context, clusterID string) (string, e
 
 	err = c.signer.Sign(req)
 
+	for k, header := range req.Header {
+		c.logger.Info(fmt.Sprintf("header parameters", k, header))
+	}
 	if err != nil {
 		return "", err
 	}
