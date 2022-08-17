@@ -33,7 +33,7 @@ func NewBaseClient(configProvider common.ConfigurationProvider, logger *logr.Log
 		return nil, errors.New("more than one resources are affected by the work request to create the cluster")
 	}
 
-	endpoint := common.StringToRegion(region).EndpointForTemplate("containerengine", "containerengine.{region}.oci.{secondLevelDomain}")
+	endpoint := common.StringToRegion(region).EndpointForTemplate("containerengine", "containerengine.{region}.{secondLevelDomain}")
 
 	baseClient, err := common.NewClientWithConfig(configProvider)
 
