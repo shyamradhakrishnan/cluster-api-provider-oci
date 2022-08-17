@@ -205,6 +205,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = (&controllers.OCIManagedClusterControlPlaneReconciler{
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		Region:         region,
+		ClientProvider: clientProvider,
+		Recorder:       mgr.GetEventRecorderFor("ocimanagedclustercontrolplane-controller"),
+	}).SetupWithManager(ctx, mgr, controller.Options{}); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", scope.OCIManagedClusterControlPlaneKind)
+		os.Exit(1)
+	}
+
 	if err = (&infrastructurev1beta1.OCICluster{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "OCICluster")
 		os.Exit(1)

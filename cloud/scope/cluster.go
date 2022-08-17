@@ -38,10 +38,11 @@ import (
 )
 
 const (
-	AvailabilityDomain    = "AvailabilityDomain"
-	FaultDomain           = "FaultDomain"
-	OCIClusterKind        = "OCICluster"
-	OCIManagedClusterKind = "OCIManagedCluster"
+	AvailabilityDomain                = "AvailabilityDomain"
+	FaultDomain                       = "FaultDomain"
+	OCIClusterKind                    = "OCICluster"
+	OCIManagedClusterKind             = "OCIManagedCluster"
+	OCIManagedClusterControlPlaneKind = "OCIManagedClusterControlPlane"
 )
 
 // ClusterScopeParams defines the params need to create a new ClusterScope
