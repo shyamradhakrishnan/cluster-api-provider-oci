@@ -230,15 +230,15 @@ func (r *OCIManagedClusterControlPlaneReconciler) reconcile(ctx context.Context,
 		controlPlaneScope.Info("Control plane is updating")
 		return reconcile.Result{RequeueAfter: 30 * time.Second}, nil
 	case containerengine.ClusterLifecycleStateActive:
-		controlPlaneScope.Info("Instance is active")
-		if controlPlaneScope.IsControlPlaneEndpointSubnetPrivate() {
+		controlPlaneScope.Info("Control plane is active", "endpoints", controlPlane.Endpoints)
+		if controlPlaneScope.IsControlPlaneEndpointSubnetPublic() {
 			cluster.Spec.ControlPlaneEndpoint = &clusterv1.APIEndpoint{
-				Host: *controlPlane.Endpoints.PrivateEndpoint,
+				Host: *controlPlane.Endpoints.PublicEndpoint,
 				Port: 6443,
 			}
 		} else {
 			cluster.Spec.ControlPlaneEndpoint = &clusterv1.APIEndpoint{
-				Host: *controlPlane.Endpoints.PublicEndpoint,
+				Host: *controlPlane.Endpoints.PrivateEndpoint,
 				Port: 6443,
 			}
 		}

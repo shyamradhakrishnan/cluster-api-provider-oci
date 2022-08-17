@@ -95,7 +95,7 @@ func (s *ControlPlaneScope) GetOrCreateControlPlane(ctx context.Context) (*oke.C
 	endpointConfig := &oke.CreateClusterEndpointConfigDetails{
 		SubnetId:          s.getControlPlaneEndpointSubnet(),
 		NsgIds:            s.getControlPlaneEndpointNSGList(),
-		IsPublicIpEnabled: common.Bool(s.IsControlPlaneEndpointSubnetPrivate()),
+		IsPublicIpEnabled: common.Bool(s.IsControlPlaneEndpointSubnetPublic()),
 	}
 	details := oke.CreateClusterDetails{
 		Name:              common.String(s.GetClusterName()),
@@ -237,9 +237,9 @@ func (s *ControlPlaneScope) getControlPlaneEndpointNSGList() []string {
 	return nsgs
 }
 
-func (s *ControlPlaneScope) IsControlPlaneEndpointSubnetPrivate() bool {
+func (s *ControlPlaneScope) IsControlPlaneEndpointSubnetPublic() bool {
 	for _, subnet := range s.OCIClusterBase.GetVCN().Subnets {
-		if subnet.Role == infrastructurev1beta1.ControlPlaneEndpointRole && subnet.Type == infrastructurev1beta1.Private {
+		if subnet.Role == infrastructurev1beta1.ControlPlaneEndpointRole && subnet.Type == infrastructurev1beta1.Public {
 			return true
 		}
 	}
