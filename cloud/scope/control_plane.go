@@ -293,6 +293,7 @@ func (s *ControlPlaneScope) createCAPIKubeconfigSecret(ctx context.Context, okeC
 	}
 
 	kubeconfigSecret := kubeconfig.GenerateSecretWithOwner(clusterRef, out, controllerOwnerRef)
+	s.Logger.Info("kubeconfig", "config", kubeconfigSecret)
 	if err := s.client.Create(ctx, kubeconfigSecret); err != nil {
 		return errors.Wrap(err, "failed to create kubeconfig secret")
 	}
