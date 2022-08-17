@@ -28,6 +28,8 @@ func NewBaseClient(configProvider common.ConfigurationProvider, logger *logr.Log
 	endpoint := common.StringToRegion(region).Endpoint("containerengine")
 
 	baseClient, err := common.NewClientWithConfig(configProvider)
+	baseClient.Host = endpoint
+
 	return &Client{
 		endpoint: endpoint,
 		client:   baseClient,
