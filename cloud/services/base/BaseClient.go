@@ -77,5 +77,6 @@ func (c *Client) GenerateToken(ctx context.Context, clusterID string) (string, e
 		return "", err
 	}
 	url.RawQuery = query.Encode()
+	c.logger.Info(fmt.Sprintf("Raw query is %s", url.RawQuery))
 	return base64.URLEncoding.EncodeToString([]byte(url.String())), nil
 }
