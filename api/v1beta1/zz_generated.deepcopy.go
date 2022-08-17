@@ -1212,11 +1212,7 @@ func (in *OCIManagedControlPlaneSpec) DeepCopyInto(out *OCIManagedControlPlaneSp
 	out.EndpointConfig = in.EndpointConfig
 	in.ImagePolicyConfig.DeepCopyInto(&out.ImagePolicyConfig)
 	out.ClusterOption = in.ClusterOption
-	if in.ControlPlaneEndpoint != nil {
-		in, out := &in.ControlPlaneEndpoint, &out.ControlPlaneEndpoint
-		*out = new(apiv1beta1.APIEndpoint)
-		**out = **in
-	}
+	out.ControlPlaneEndpoint = in.ControlPlaneEndpoint
 	if in.Version != nil {
 		in, out := &in.Version, &out.Version
 		*out = new(string)
