@@ -143,9 +143,9 @@ func (c *OCIManagedCluster) ValidateUpdate(old runtime.Object) error {
 
 	var allErrs field.ErrorList
 
-	oldCluster, ok := old.(*OCICluster)
+	oldCluster, ok := old.(*OCIManagedCluster)
 	if !ok {
-		return apierrors.NewBadRequest(fmt.Sprintf("expected an OCICluster but got a %T", old))
+		return apierrors.NewBadRequest(fmt.Sprintf("expected an OCIManagedCluster but got a %T", old))
 	}
 
 	if c.Spec.Region != oldCluster.Spec.Region {
@@ -169,7 +169,7 @@ func (c *OCIManagedCluster) ValidateUpdate(old runtime.Object) error {
 	return apierrors.NewInvalid(c.GroupVersionKind().GroupKind(), c.Name, allErrs)
 }
 
-func (c *OCIManagedCluster) validate(old *OCICluster) field.ErrorList {
+func (c *OCIManagedCluster) validate(old *OCIManagedCluster) field.ErrorList {
 	var allErrs field.ErrorList
 
 	var oldNetworkSpec NetworkSpec
