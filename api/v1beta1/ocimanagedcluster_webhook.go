@@ -52,7 +52,7 @@ func (c *OCIManagedCluster) Default() {
 				Role: ControlPlaneEndpointRole,
 				Name: ControlPlaneEndpointDefaultName,
 				CIDR: ControlPlaneEndpointSubnetDefaultCIDR,
-				Type: Public,
+				Type: Private,
 			})
 
 			subnets = append(subnets, &Subnet{
