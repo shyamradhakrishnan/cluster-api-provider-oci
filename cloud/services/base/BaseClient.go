@@ -2,8 +2,8 @@ package base
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -15,13 +15,10 @@ import (
 var (
 	// list of required headers for generation and parsing.
 	requiredHeaders = []string{"date", "authorization"}
-
-	optionalHeaders = []string{"opc-obo-token", "x-cross-tenancy-request"}
 )
 
 type Client struct {
 	endpoint string
-	client   common.BaseClient
 	logger   *logr.Logger
 	signer   common.HTTPRequestSigner
 }
@@ -34,15 +31,10 @@ func NewBaseClient(configProvider common.ConfigurationProvider, logger *logr.Log
 	}
 
 	endpoint := common.StringToRegion(region).EndpointForTemplate("containerengine", "containerengine.{region}.{secondLevelDomain}")
-
-	baseClient, err := common.NewClientWithConfig(configProvider)
-
 	signer := common.DefaultRequestSigner(configProvider)
-	baseClient.Host = endpoint
 
 	return &Client{
 		endpoint: endpoint,
-		client:   baseClient,
 		logger:   logger,
 		signer:   signer,
 	}, err
@@ -53,19 +45,13 @@ func (c *Client) GenerateToken(ctx context.Context, clusterID string) (string, e
 		"https://%s/cluster_request/%s",
 		c.endpoint,
 		clusterID)
-	c.logger.Info(fmt.Sprintf("Containerengine endpoint is %s", endpoint))
 
 	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
-	req.Header.Set("date", time.Now().UTC().Format(http.TimeFormat))
 	if err != nil {
 		return "", err
 	}
-
+	req.Header.Set("date", time.Now().UTC().Format(http.TimeFormat))
 	err = c.signer.Sign(req)
-
-	for k, header := range req.Header {
-		c.logger.Info(fmt.Sprintf("header parameters", k, header))
-	}
 	if err != nil {
 		return "", err
 	}
@@ -75,13 +61,5 @@ func (c *Client) GenerateToken(ctx context.Context, clusterID string) (string, e
 		query.Set(header, req.Header.Get(header))
 	}
 	url.RawQuery = query.Encode()
-	urlString := url.String()
-	c.logger.Info(fmt.Sprintf("URLis %s", urlString))
-	resp, err := http.Get(urlString)
-	if err != nil {
-		return "", err
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	c.logger.Info(fmt.Sprintf("Token is %s", string(body)))
-	return string(body), nil
+	return base64.URLEncoding.EncodeToString([]byte(url.String())), nil
 }
