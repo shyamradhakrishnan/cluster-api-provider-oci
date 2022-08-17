@@ -270,8 +270,8 @@ func (s *ControlPlaneScope) createCAPIKubeconfigSecret(ctx context.Context, okeC
 	}
 	s.Logger.Info("raw config", "config", rawConfig)
 	userName := getKubeConfigUserName(*okeCluster.Name, false)
-	currentCluster := rawConfig.Clusters[rawConfig.CurrentContext]
 	currentContext := rawConfig.Contexts[rawConfig.CurrentContext]
+	currentCluster := rawConfig.Clusters[currentContext.Cluster]
 
 	cfg, err := createBaseKubeConfig(userName, currentCluster, currentContext.Cluster, rawConfig.CurrentContext)
 
