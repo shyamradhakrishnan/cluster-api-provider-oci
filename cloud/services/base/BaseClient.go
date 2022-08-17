@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -76,6 +77,10 @@ func (c *Client) GenerateToken(ctx context.Context, clusterID string) (string, e
 	}
 	url.RawQuery = query.Encode()
 	encodedStr := base64.URLEncoding.EncodeToString([]byte(url.String()))
-	c.logger.Info(fmt.Sprintf("encoded string is %s", encodedStr))
-	return encodedStr, nil
+	resp, err := http.Get(encodedStr)
+	if err != nil {
+		return "", err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	return string(body), nil
 }
