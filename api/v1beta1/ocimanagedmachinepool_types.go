@@ -161,7 +161,7 @@ type NodeSourceViaImage struct {
 
 	// ImageId defines the OCID of the image used to boot the node.
 	// +optional
-	ImageId int64 `json:"imageId,omitempty"`
+	ImageId string `json:"imageId,omitempty"`
 }
 
 // OCIManagedMachinePoolStatus defines the observed state of OCIManagedMachinePool
