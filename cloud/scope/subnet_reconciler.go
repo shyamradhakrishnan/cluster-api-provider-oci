@@ -27,7 +27,7 @@ import (
 )
 
 func (s *ClusterScope) ReconcileSubnet(ctx context.Context) error {
-	desiredSubnets := s.OCIClusterBase.GetVCN().Subnets
+	desiredSubnets := s.OCIClusterAccessor.GetNetworkSpec().Vcn.Subnets
 	for _, desiredSubnet := range desiredSubnets {
 		subnet, err := s.GetSubnet(ctx, *desiredSubnet)
 		if err != nil {
@@ -242,7 +242,7 @@ func (s *ClusterScope) GetNodeSubnet() []*infrastructurev1beta1.Subnet {
 }
 
 func (s *ClusterScope) GetSubnetsSpec() []*infrastructurev1beta1.Subnet {
-	return s.OCIClusterBase.GetVCN().Subnets
+	return s.OCIClusterAccessor.GetNetworkSpec().Vcn.Subnets
 }
 
 func (s *ClusterScope) IsSubnetsEqual(actual *core.Subnet, desired infrastructurev1beta1.Subnet) bool {
@@ -261,7 +261,7 @@ func (s *ClusterScope) IsSubnetsEqual(actual *core.Subnet, desired infrastructur
 }
 
 func (s *ClusterScope) isControlPlaneEndpointSubnetPrivate() bool {
-	for _, subnet := range s.OCIClusterBase.GetVCN().Subnets {
+	for _, subnet := range s.OCIClusterAccessor.GetNetworkSpec().Vcn.Subnets {
 		if subnet.Role == infrastructurev1beta1.ControlPlaneEndpointRole && subnet.Type == infrastructurev1beta1.Private {
 			return true
 		}

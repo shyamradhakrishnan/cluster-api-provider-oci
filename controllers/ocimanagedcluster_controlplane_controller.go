@@ -159,14 +159,14 @@ func (r *OCIManagedClusterControlPlaneReconciler) Reconcile(ctx context.Context,
 
 	var controlPlaneScope *scope.ControlPlaneScope
 
-	clusterBase := scope.OCIManagedCluster{
+	clusterAccessor := scope.OCIManagedCluster{
 		OCIManagedCluster: ociManagedCluster,
 	}
 	controlPlaneScope, err = scope.NewControlPlaneScope(scope.ControlPlaneScopeParams{
 		Client:                 r.Client,
 		Logger:                 &logger,
 		Cluster:                cluster,
-		OCIClusterBase:         clusterBase,
+		OCIClusterAccessor:     clusterAccessor,
 		ClientProvider:         r.ClientProvider,
 		ContainerEngineClient:  clients.ContainerEngineClient,
 		Region:                 regionOverride,

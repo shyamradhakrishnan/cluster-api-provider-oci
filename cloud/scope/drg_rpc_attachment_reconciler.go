@@ -47,7 +47,7 @@ func (s *ClusterScope) ReconcileDRGRPCAttachment(ctx context.Context) error {
 		return errors.New("DRG ID has not been set")
 	}
 
-	for _, rpcSpec := range s.OCIClusterBase.GetNetworkSpec().VCNPeering.RemotePeeringConnections {
+	for _, rpcSpec := range s.OCIClusterAccessor.GetNetworkSpec().VCNPeering.RemotePeeringConnections {
 		localRpc, err := s.lookupRPC(ctx, s.getDrgID(), rpcSpec.RPCConnectionId, s.VCNClient)
 		if err != nil {
 			return err
@@ -63,7 +63,7 @@ func (s *ClusterScope) ReconcileDRGRPCAttachment(ctx context.Context) error {
 				s.Logger.Info("Local RPC has been updated", "rpcId", localRpc.Id)
 			}
 		} else {
-			localRpc, err = s.createRPC(ctx, s.getDrgID(), s.OCIClusterBase.GetName(), s.VCNClient)
+			localRpc, err = s.createRPC(ctx, s.getDrgID(), s.OCIClusterAccessor.GetName(), s.VCNClient)
 			if err != nil {
 				return err
 			}
@@ -99,7 +99,7 @@ func (s *ClusterScope) ReconcileDRGRPCAttachment(ctx context.Context) error {
 					s.Logger.Info("Remote RPC has been updated", "rpcId", remoteRpc.Id)
 				}
 			} else {
-				remoteRpc, err = s.createRPC(ctx, rpcSpec.PeerDRGId, s.OCIClusterBase.GetName(), clientProvider.VCNClient)
+				remoteRpc, err = s.createRPC(ctx, rpcSpec.PeerDRGId, s.OCIClusterAccessor.GetName(), clientProvider.VCNClient)
 				if err != nil {
 					return err
 				}
@@ -196,7 +196,7 @@ func (s *ClusterScope) lookupRPC(ctx context.Context, drgId *string, rpcId *stri
 				return nil, err
 			}
 			for _, rpc := range response.Items {
-				if *rpc.DisplayName == s.OCIClusterBase.GetName() {
+				if *rpc.DisplayName == s.OCIClusterAccessor.GetName() {
 					if s.IsResourceCreatedByClusterAPI(rpc.FreeformTags) {
 						rpcs = append(rpcs, rpc)
 					} else {
@@ -318,7 +318,7 @@ func (s *ClusterScope) DeleteDRGRPCAttachment(ctx context.Context) error {
 		return nil
 	}
 
-	for _, rpcSpec := range s.OCIClusterBase.GetNetworkSpec().VCNPeering.RemotePeeringConnections {
+	for _, rpcSpec := range s.OCIClusterAccessor.GetNetworkSpec().VCNPeering.RemotePeeringConnections {
 		localRpc, err := s.lookupRPC(ctx, s.getDrgID(), rpcSpec.RPCConnectionId, s.VCNClient)
 		if err != nil && !ociutil.IsNotFound(err) {
 			return err

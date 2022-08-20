@@ -37,7 +37,7 @@ type ControlPlaneScopeParams struct {
 	OCIAuthConfigProvider  common.ConfigurationProvider
 	ClientProvider         *ClientProvider
 	OCIManagedControlPlane *infrastructurev1beta1.OCIManagedControlPlane
-	OCIClusterBase         OCIClusterBase
+	OCIClusterAccessor     OCIClusterAccessor
 	BaseClient             baseclient.BaseClient
 }
 
@@ -51,7 +51,7 @@ type ControlPlaneScope struct {
 	Region                 string
 	ClientProvider         *ClientProvider
 	OCIManagedControlPlane *infrastructurev1beta1.OCIManagedControlPlane
-	OCIClusterBase         OCIClusterBase
+	OCIClusterAccessor     OCIClusterAccessor
 }
 
 // NewControlPlaneScope creates a ControlPlaneScope given the ControlPlaneScopeParams
@@ -60,8 +60,8 @@ func NewControlPlaneScope(params ControlPlaneScopeParams) (*ControlPlaneScope, e
 	if params.Cluster == nil {
 		return nil, errors.New("failed to generate new scope from nil Cluster")
 	}
-	if params.OCIClusterBase == nil {
-		return nil, errors.New("failed to generate new scope from nil OCICluster")
+	if params.OCIClusterAccessor == nil {
+		return nil, errors.New("failed to generate new scope from nil OCIClusterAccessor")
 	}
 
 	if params.Logger == nil {
@@ -76,7 +76,7 @@ func NewControlPlaneScope(params ControlPlaneScopeParams) (*ControlPlaneScope, e
 		ContainerEngineClient:  params.ContainerEngineClient,
 		Region:                 params.Region,
 		ClientProvider:         params.ClientProvider,
-		OCIClusterBase:         params.OCIClusterBase,
+		OCIClusterAccessor:     params.OCIClusterAccessor,
 		OCIManagedControlPlane: params.OCIManagedControlPlane,
 		BaseClient:             params.BaseClient,
 	}, nil
@@ -99,8 +99,8 @@ func (s *ControlPlaneScope) GetOrCreateControlPlane(ctx context.Context) (*oke.C
 	}
 	details := oke.CreateClusterDetails{
 		Name:              common.String(s.GetClusterName()),
-		CompartmentId:     common.String(s.OCIClusterBase.GetCompartmentId()),
-		VcnId:             s.OCIClusterBase.GetVCN().ID,
+		CompartmentId:     common.String(s.OCIClusterAccessor.GetCompartmentId()),
+		VcnId:             s.OCIClusterAccessor.GetNetworkSpec().Vcn.ID,
 		KubernetesVersion: s.OCIManagedControlPlane.Spec.Version,
 		FreeformTags:      s.GetFreeFormTags(),
 		DefinedTags:       s.GetDefinedTags(),
@@ -155,7 +155,7 @@ func (s *ControlPlaneScope) getOKEClusterFromOCID(ctx context.Context, clusterID
 
 func (s *ControlPlaneScope) GetOKEClusterByDisplayName(ctx context.Context, name string) (*oke.Cluster, error) {
 	req := oke.ListClustersRequest{Name: common.String(name),
-		CompartmentId: common.String(s.OCIClusterBase.GetCompartmentId())}
+		CompartmentId: common.String(s.OCIClusterAccessor.GetCompartmentId())}
 	resp, err := s.ContainerEngineClient.ListClusters(ctx, req)
 	if err != nil {
 		return nil, err
@@ -172,7 +172,7 @@ func (s *ControlPlaneScope) GetOKEClusterByDisplayName(ctx context.Context, name
 }
 
 func (s *ControlPlaneScope) IsResourceCreatedByClusterAPI(resourceFreeFormTags map[string]string) bool {
-	tagsAddedByClusterAPI := ociutil.BuildClusterTags(s.OCIClusterBase.GetOCIResourceIdentifier())
+	tagsAddedByClusterAPI := ociutil.BuildClusterTags(s.OCIClusterAccessor.GetOCIResourceIdentifier())
 	for k, v := range tagsAddedByClusterAPI {
 		if resourceFreeFormTags[k] != v {
 			return false
@@ -185,12 +185,12 @@ func (s *ControlPlaneScope) GetClusterName() string {
 	if s.OCIManagedControlPlane.Name == "" {
 		return s.OCIManagedControlPlane.Name
 	}
-	return s.OCIClusterBase.GetName()
+	return s.OCIClusterAccessor.GetName()
 }
 
 // GetDefinedTags returns a map of DefinedTags defined in the OCICluster's spec
 func (s *ControlPlaneScope) GetDefinedTags() map[string]map[string]interface{} {
-	tags := s.OCIClusterBase.GetDefinedTags()
+	tags := s.OCIClusterAccessor.GetDefinedTags()
 	if tags == nil {
 		return make(map[string]map[string]interface{})
 	}
@@ -207,11 +207,11 @@ func (s *ControlPlaneScope) GetDefinedTags() map[string]map[string]interface{} {
 
 // GetFreeFormTags returns a map of FreeformTags defined in the OCICluster's spec
 func (s *ControlPlaneScope) GetFreeFormTags() map[string]string {
-	tags := s.OCIClusterBase.GetFreeformTags()
+	tags := s.OCIClusterAccessor.GetFreeformTags()
 	if tags == nil {
 		tags = make(map[string]string)
 	}
-	tagsAddedByClusterAPI := ociutil.BuildClusterTags(string(s.OCIClusterBase.GetOCIResourceIdentifier()))
+	tagsAddedByClusterAPI := ociutil.BuildClusterTags(string(s.OCIClusterAccessor.GetOCIResourceIdentifier()))
 	for k, v := range tagsAddedByClusterAPI {
 		tags[k] = v
 	}
@@ -219,7 +219,7 @@ func (s *ControlPlaneScope) GetFreeFormTags() map[string]string {
 }
 
 func (s *ControlPlaneScope) getControlPlaneEndpointSubnet() *string {
-	for _, subnet := range s.OCIClusterBase.GetVCN().Subnets {
+	for _, subnet := range s.OCIClusterAccessor.GetNetworkSpec().Vcn.Subnets {
 		if subnet.Role == infrastructurev1beta1.ControlPlaneEndpointRole {
 			return subnet.ID
 		}
@@ -229,7 +229,7 @@ func (s *ControlPlaneScope) getControlPlaneEndpointSubnet() *string {
 
 func (s *ControlPlaneScope) getControlPlaneEndpointNSGList() []string {
 	nsgs := make([]string, 0)
-	for _, nsg := range s.OCIClusterBase.GetVCN().NetworkSecurityGroups {
+	for _, nsg := range s.OCIClusterAccessor.GetNetworkSpec().Vcn.NetworkSecurityGroups {
 		if nsg.Role == infrastructurev1beta1.ControlPlaneEndpointRole {
 			nsgs = append(nsgs, *nsg.ID)
 		}
@@ -238,7 +238,7 @@ func (s *ControlPlaneScope) getControlPlaneEndpointNSGList() []string {
 }
 
 func (s *ControlPlaneScope) IsControlPlaneEndpointSubnetPublic() bool {
-	for _, subnet := range s.OCIClusterBase.GetVCN().Subnets {
+	for _, subnet := range s.OCIClusterAccessor.GetNetworkSpec().Vcn.Subnets {
 		if subnet.Role == infrastructurev1beta1.ControlPlaneEndpointRole && subnet.Type == infrastructurev1beta1.Public {
 			return true
 		}

@@ -1,6 +1,3 @@
-//go:build e2e
-// +build e2e
-
 /*
  Copyright (c) 2021, 2022 Oracle and/or its affiliates.
 
@@ -393,18 +390,20 @@ func TestClusterScope_ReconcileRouteTable(t *testing.T) {
 	l := log.FromContext(context.Background())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ociCluster := infrastructurev1beta1.OCICluster{
-				ObjectMeta: metav1.ObjectMeta{
-					UID: "cluster_uid",
+			ociClusterAccessor := OCISelfManagedCluster{
+				&infrastructurev1beta1.OCICluster{
+					ObjectMeta: metav1.ObjectMeta{
+						UID: "cluster_uid",
+					},
+					Spec: tt.spec,
 				},
-				Spec: tt.spec,
 			}
-			ociCluster.Spec.OCIResourceIdentifier = "resource_uid"
+			ociClusterAccessor.OCICluster.Spec.OCIResourceIdentifier = "resource_uid"
 			s := &ClusterScope{
-				IdentityClient: identityClient,
-				Region:         "ashburn",
-				VCNClient:      vcnClient,
-				OCICluster:     &ociCluster,
+				IdentityClient:     identityClient,
+				Region:             "ashburn",
+				VCNClient:          vcnClient,
+				OCIClusterAccessor: ociClusterAccessor,
 				Cluster: &clusterv1.Cluster{
 					ObjectMeta: metav1.ObjectMeta{
 						UID: "cluster_uid",
@@ -566,17 +565,19 @@ func TestClusterScope_DeleteRouteTables(t *testing.T) {
 	l := log.FromContext(context.Background())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ociCluster := infrastructurev1beta1.OCICluster{
-				Spec: tt.spec,
-				ObjectMeta: metav1.ObjectMeta{
-					UID: "cluster_uid",
+			ociClusterAccessor := OCISelfManagedCluster{
+				&infrastructurev1beta1.OCICluster{
+					Spec: tt.spec,
+					ObjectMeta: metav1.ObjectMeta{
+						UID: "cluster_uid",
+					},
 				},
 			}
-			ociCluster.Spec.OCIResourceIdentifier = "resource_uid"
+			ociClusterAccessor.OCICluster.Spec.OCIResourceIdentifier = "resource_uid"
 			s := &ClusterScope{
-				VCNClient:  vcnClient,
-				OCICluster: &ociCluster,
-				Logger:     &l,
+				VCNClient:          vcnClient,
+				OCIClusterAccessor: ociClusterAccessor,
+				Logger:             &l,
 			}
 			err := s.DeleteRouteTables(context.Background())
 			if (err != nil) != tt.wantErr {

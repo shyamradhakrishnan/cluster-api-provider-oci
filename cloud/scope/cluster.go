@@ -56,7 +56,7 @@ type ClusterScopeParams struct {
 	Region                string
 	OCIAuthConfigProvider common.ConfigurationProvider
 	ClientProvider        *ClientProvider
-	OCIClusterBase        OCIClusterBase
+	OCIClusterAccessor    OCIClusterAccessor
 }
 
 type ClusterScope struct {
@@ -69,7 +69,7 @@ type ClusterScope struct {
 	IdentityClient     identityClent.Client
 	Region             string
 	ClientProvider     *ClientProvider
-	OCIClusterBase     OCIClusterBase
+	OCIClusterAccessor OCIClusterAccessor
 }
 
 // NewClusterScope creates a ClusterScope given the ClusterScopeParams
@@ -78,8 +78,8 @@ func NewClusterScope(params ClusterScopeParams) (*ClusterScope, error) {
 	if params.Cluster == nil {
 		return nil, errors.New("failed to generate new scope from nil Cluster")
 	}
-	if params.OCIClusterBase == nil {
-		return nil, errors.New("failed to generate new scope from nil OCICluster")
+	if params.OCIClusterAccessor == nil {
+		return nil, errors.New("failed to generate new scope from nil OCIClusterAccessor")
 	}
 
 	if params.Logger == nil {
@@ -96,12 +96,12 @@ func NewClusterScope(params ClusterScopeParams) (*ClusterScope, error) {
 		IdentityClient:     params.IdentityClient,
 		Region:             params.Region,
 		ClientProvider:     params.ClientProvider,
-		OCIClusterBase:     params.OCIClusterBase,
+		OCIClusterAccessor: params.OCIClusterAccessor,
 	}, nil
 }
 
 func (s *ClusterScope) IsResourceCreatedByClusterAPI(resourceFreeFormTags map[string]string) bool {
-	tagsAddedByClusterAPI := ociutil.BuildClusterTags(s.OCIClusterBase.GetOCIResourceIdentifier())
+	tagsAddedByClusterAPI := ociutil.BuildClusterTags(s.OCIClusterAccessor.GetOCIResourceIdentifier())
 	for k, v := range tagsAddedByClusterAPI {
 		if resourceFreeFormTags[k] != v {
 			return false
@@ -111,7 +111,7 @@ func (s *ClusterScope) IsResourceCreatedByClusterAPI(resourceFreeFormTags map[st
 }
 
 func (s *ClusterScope) ReconcileFailureDomains(ctx context.Context) error {
-	if s.OCIClusterBase.GetOCIClusterStatus().FailureDomains == nil {
+	if s.OCIClusterAccessor.GetOCIClusterStatus().FailureDomains == nil {
 		return s.setFailureDomains(ctx)
 	}
 	return nil
@@ -151,7 +151,7 @@ func (s *ClusterScope) setFailureDomains(ctx context.Context) error {
 		}
 	} else {
 		adName := *respAd.Items[0].Name
-		for i, fd := range s.OCIClusterBase.GetOCIClusterStatus().AvailabilityDomains[adName].FaultDomains {
+		for i, fd := range s.OCIClusterAccessor.GetOCIClusterStatus().AvailabilityDomains[adName].FaultDomains {
 			s.SetFailureDomain(strconv.Itoa(i+1), clusterv1.FailureDomainSpec{
 				ControlPlane: true,
 				Attributes: map[string]string{
@@ -167,7 +167,7 @@ func (s *ClusterScope) setFailureDomains(ctx context.Context) error {
 
 // SetFailureDomain sets the cluster's failure domain in the status
 func (s *ClusterScope) SetFailureDomain(id string, spec clusterv1.FailureDomainSpec) {
-	status := s.OCIClusterBase.GetOCIClusterStatus()
+	status := s.OCIClusterAccessor.GetOCIClusterStatus()
 	if status.FailureDomains == nil {
 		status.FailureDomains = make(clusterv1.FailureDomains)
 	}
@@ -201,7 +201,7 @@ func (s *ClusterScope) setAvailabiltyDomainStatus(ctx context.Context, ads []ide
 		}
 	}
 
-	status := s.OCIClusterBase.GetOCIClusterStatus()
+	status := s.OCIClusterAccessor.GetOCIClusterStatus()
 	status.AvailabilityDomains = clusterAds
 
 	return nil
@@ -234,7 +234,7 @@ func (s *ClusterScope) GetRegionCodeFromRegion(ctx context.Context, region strin
 
 // GetDefinedTags returns a map of DefinedTags defined in the OCICluster's spec
 func (s *ClusterScope) GetDefinedTags() map[string]map[string]interface{} {
-	tags := s.OCIClusterBase.GetDefinedTags()
+	tags := s.OCIClusterAccessor.GetDefinedTags()
 	if tags == nil {
 		return make(map[string]map[string]interface{})
 	}
@@ -251,7 +251,7 @@ func (s *ClusterScope) GetDefinedTags() map[string]map[string]interface{} {
 
 // GetCompartmentId returns the CompartmentId defined in OCICluster's spec
 func (s *ClusterScope) GetCompartmentId() string {
-	return s.OCIClusterBase.GetCompartmentId()
+	return s.OCIClusterAccessor.GetCompartmentId()
 }
 
 // APIServerPort returns the APIServerPort to use when creating the load balancer.
@@ -264,23 +264,23 @@ func (s *ClusterScope) APIServerPort() int32 {
 
 // GetFreeFormTags returns a map of FreeformTags defined in the OCICluster's spec
 func (s *ClusterScope) GetFreeFormTags() map[string]string {
-	tags := s.OCIClusterBase.GetFreeformTags()
+	tags := s.OCIClusterAccessor.GetFreeformTags()
 	if tags == nil {
 		tags = make(map[string]string)
 	}
-	tagsAddedByClusterAPI := ociutil.BuildClusterTags(string(s.OCIClusterBase.GetOCIResourceIdentifier()))
+	tagsAddedByClusterAPI := ociutil.BuildClusterTags(string(s.OCIClusterAccessor.GetOCIResourceIdentifier()))
 	for k, v := range tagsAddedByClusterAPI {
 		tags[k] = v
 	}
 	return tags
 }
 
-func (s *ClusterScope) GetOCIClusterBase() OCIClusterBase {
-	return s.OCIClusterBase
+func (s *ClusterScope) GetOCIClusterAccessor() OCIClusterAccessor {
+	return s.OCIClusterAccessor
 }
 
 func (s *ClusterScope) getDRG() *infrastructurev1beta1.DRG {
-	return s.OCIClusterBase.GetDRG()
+	return s.OCIClusterAccessor.GetNetworkSpec().VCNPeering.DRG
 }
 
 func (s *ClusterScope) getDrgID() *string {
@@ -288,5 +288,5 @@ func (s *ClusterScope) getDrgID() *string {
 }
 
 func (s *ClusterScope) isPeeringEnabled() bool {
-	return s.OCIClusterBase.GetVCNPeering() != nil
+	return s.OCIClusterAccessor.GetNetworkSpec().VCNPeering != nil
 }

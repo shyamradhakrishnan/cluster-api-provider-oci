@@ -37,7 +37,7 @@ func (s *ClusterScope) ReconcileNatGateway(ctx context.Context) error {
 		return err
 	}
 	if ngw != nil {
-		vcnSpec := s.OCIClusterBase.GetVCN()
+		vcnSpec := s.OCIClusterAccessor.GetNetworkSpec().Vcn
 		vcnSpec.NatGatewayId = ngw.Id
 		if !s.IsTagsEqual(ngw.FreeformTags, ngw.DefinedTags) {
 			return s.UpdateNatGateway(ctx)
@@ -46,7 +46,7 @@ func (s *ClusterScope) ReconcileNatGateway(ctx context.Context) error {
 		return nil
 	}
 	natGateway, err := s.CreateNatGateway(ctx)
-	vcnSpec := s.OCIClusterBase.GetVCN()
+	vcnSpec := s.OCIClusterAccessor.GetNetworkSpec().Vcn
 	vcnSpec.NatGatewayId = natGateway
 	return err
 }
@@ -57,7 +57,7 @@ func (s *ClusterScope) ReconcileNatGateway(ctx context.Context) error {
 //
 // 2. Listing the NAT Gateways for the Compartment (by ID), VCN and DisplayName and filtering by tag
 func (s *ClusterScope) GetNatGateway(ctx context.Context) (*core.NatGateway, error) {
-	ngwId := s.OCIClusterBase.GetVCN().NatGatewayId
+	ngwId := s.OCIClusterAccessor.GetNetworkSpec().Vcn.NatGatewayId
 	if ngwId != nil {
 		resp, err := s.VCNClient.GetNatGateway(ctx, core.GetNatGatewayRequest{
 			NatGatewayId: ngwId,
@@ -96,7 +96,7 @@ func (s *ClusterScope) UpdateNatGateway(ctx context.Context) error {
 		DefinedTags:  s.GetDefinedTags(),
 	}
 	igwResponse, err := s.VCNClient.UpdateNatGateway(ctx, core.UpdateNatGatewayRequest{
-		NatGatewayId:            s.OCIClusterBase.GetVCN().NatGatewayId,
+		NatGatewayId:            s.OCIClusterAccessor.GetNetworkSpec().Vcn.NatGatewayId,
 		UpdateNatGatewayDetails: updateNGWDetails,
 	})
 	if err != nil {

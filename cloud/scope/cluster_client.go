@@ -29,5 +29,5 @@ type ClusterScopeClient interface {
 	DeleteVCN(ctx context.Context) error
 	DeleteDRGVCNAttachment(ctx context.Context) error
 	DeleteDRGRPCAttachment(ctx context.Context) error
-	GetOCIClusterBase() OCIClusterBase
+	GetOCIClusterAccessor() OCIClusterAccessor
 }

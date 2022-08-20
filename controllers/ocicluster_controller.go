@@ -118,14 +118,14 @@ func (r *OCIClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, errors.Wrap(err, "failed to init patch helper")
 	}
 
-	clusterBase := scope.OCIUnmanagedCluster{
+	clusterAccessor := scope.OCISelfManagedCluster{
 		OCICluster: ociCluster,
 	}
 	clusterScope, err = scope.NewClusterScope(scope.ClusterScopeParams{
 		Client:             r.Client,
 		Logger:             &logger,
 		Cluster:            cluster,
-		OCIClusterBase:     clusterBase,
+		OCIClusterAccessor: clusterAccessor,
 		ClientProvider:     r.ClientProvider,
 		VCNClient:          clients.VCNClient,
 		LoadBalancerClient: clients.LoadBalancerClient,

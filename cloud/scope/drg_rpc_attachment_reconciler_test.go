@@ -1,6 +1,3 @@
-//go:build e2e
-// +build e2e
-
 /*
  Copyright (c) 2021, 2022 Oracle and/or its affiliates.
 
@@ -39,13 +36,13 @@ import (
 
 func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 	var (
-		cs            *ClusterScope
-		mockCtrl      *gomock.Controller
-		vcnClient     *mock_vcn.MockClient
-		peerVcnClient *mock_vcn.MockClient
-		ociCluster    infrastructurev1beta1.OCICluster
-		tags          map[string]string
-		vcnPeering    infrastructurev1beta1.VCNPeering
+		cs                 *ClusterScope
+		mockCtrl           *gomock.Controller
+		vcnClient          *mock_vcn.MockClient
+		peerVcnClient      *mock_vcn.MockClient
+		ociClusterAccessor OCISelfManagedCluster
+		tags               map[string]string
+		vcnPeering         infrastructurev1beta1.VCNPeering
 	)
 
 	setup := func(t *testing.T, g *WithT) {
@@ -54,14 +51,16 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 		vcnClient = mock_vcn.NewMockClient(mockCtrl)
 		peerVcnClient = mock_vcn.NewMockClient(mockCtrl)
 		client := fake.NewClientBuilder().Build()
-		ociCluster = infrastructurev1beta1.OCICluster{
-			ObjectMeta: metav1.ObjectMeta{
-				UID:  "cluster_uid",
-				Name: "cluster",
-			},
-			Spec: infrastructurev1beta1.OCIClusterSpec{
-				CompartmentId:         "compartment-id",
-				OCIResourceIdentifier: "resource_uid",
+		ociClusterAccessor = OCISelfManagedCluster{
+			&infrastructurev1beta1.OCICluster{
+				ObjectMeta: metav1.ObjectMeta{
+					UID:  "cluster_uid",
+					Name: "cluster",
+				},
+				Spec: infrastructurev1beta1.OCIClusterSpec{
+					CompartmentId:         "compartment-id",
+					OCIResourceIdentifier: "resource_uid",
+				},
 			},
 		}
 
@@ -70,13 +69,13 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 		}
 		mockProvider, err := MockNewClientProvider(mockClients)
 		g.Expect(err).To(BeNil())
-		ociCluster.Spec.ControlPlaneEndpoint.Port = 6443
+		ociClusterAccessor.OCICluster.Spec.ControlPlaneEndpoint.Port = 6443
 		cs, err = NewClusterScope(ClusterScopeParams{
-			VCNClient:      vcnClient,
-			Cluster:        &clusterv1.Cluster{},
-			OCICluster:     &ociCluster,
-			Client:         client,
-			ClientProvider: mockProvider,
+			VCNClient:          vcnClient,
+			Cluster:            &clusterv1.Cluster{},
+			OCIClusterAccessor: ociClusterAccessor,
+			Client:             client,
+			ClientProvider:     mockProvider,
 		})
 		tags = make(map[string]string)
 		tags[ociutil.CreatedBy] = ociutil.OCIClusterAPIProvider
@@ -118,7 +117,7 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 						PeerRegionName:      "us-sanjose-1",
 					},
 				}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 				vcnClient.EXPECT().ListRemotePeeringConnections(gomock.Any(), gomock.Eq(core.ListRemotePeeringConnectionsRequest{
 					DrgId:         common.String("drg-id"),
 					CompartmentId: common.String("compartment-id"),
@@ -181,7 +180,7 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 						PeerRegionName: MockTestRegion,
 					},
 				}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 				vcnClient.EXPECT().ListRemotePeeringConnections(gomock.Any(), gomock.Eq(core.ListRemotePeeringConnectionsRequest{
 					DrgId:         common.String("drg-id"),
 					CompartmentId: common.String("compartment-id"),
@@ -268,7 +267,7 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 			errorSubStringMatch: true,
 			matchError:          errors.New("DRG has not been specified"),
 			testSpecificSetup: func(clusterScope *ClusterScope, vcnClient *mock_vcn.MockClient) {
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 			},
 		},
 		{
@@ -278,7 +277,7 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 			matchError:          errors.New("DRG ID has not been set"),
 			testSpecificSetup: func(clusterScope *ClusterScope, vcnClient *mock_vcn.MockClient) {
 				vcnPeering.DRG = &infrastructurev1beta1.DRG{}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 			},
 		},
 		{
@@ -295,7 +294,7 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 						PeerRegionName: "us-sanjose-1",
 					},
 				}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 				vcnClient.EXPECT().ListRemotePeeringConnections(gomock.Any(), gomock.Eq(core.ListRemotePeeringConnectionsRequest{
 					DrgId:         common.String("drg-id"),
 					CompartmentId: common.String("compartment-id"),
@@ -343,7 +342,7 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 						PeerRegionName: "us-sanjose-1",
 					},
 				}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 				vcnClient.EXPECT().ListRemotePeeringConnections(gomock.Any(), gomock.Eq(core.ListRemotePeeringConnectionsRequest{
 					DrgId:         common.String("drg-id"),
 					CompartmentId: common.String("compartment-id"),
@@ -391,7 +390,7 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 						PeerRegionName: "us-sanjose-1",
 					},
 				}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 				vcnClient.EXPECT().ListRemotePeeringConnections(gomock.Any(), gomock.Eq(core.ListRemotePeeringConnectionsRequest{
 					DrgId:         common.String("drg-id"),
 					CompartmentId: common.String("compartment-id"),
@@ -414,7 +413,7 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 						PeerRegionName: "us-sanjose-1",
 					},
 				}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 				vcnClient.EXPECT().ListRemotePeeringConnections(gomock.Any(), gomock.Eq(core.ListRemotePeeringConnectionsRequest{
 					DrgId:         common.String("drg-id"),
 					CompartmentId: common.String("compartment-id"),
@@ -453,7 +452,7 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 						PeerRegionName: "us-sanjose-1",
 					},
 				}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 				vcnClient.EXPECT().ListRemotePeeringConnections(gomock.Any(), gomock.Eq(core.ListRemotePeeringConnectionsRequest{
 					DrgId:         common.String("drg-id"),
 					CompartmentId: common.String("compartment-id"),
@@ -502,7 +501,7 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 						PeerRegionName: MockTestRegion,
 					},
 				}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 				vcnClient.EXPECT().ListRemotePeeringConnections(gomock.Any(), gomock.Eq(core.ListRemotePeeringConnectionsRequest{
 					DrgId:         common.String("drg-id"),
 					CompartmentId: common.String("compartment-id"),
@@ -566,7 +565,7 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 						PeerRegionName: MockTestRegion,
 					},
 				}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 				vcnClient.EXPECT().ListRemotePeeringConnections(gomock.Any(), gomock.Eq(core.ListRemotePeeringConnectionsRequest{
 					DrgId:         common.String("drg-id"),
 					CompartmentId: common.String("compartment-id"),
@@ -639,7 +638,7 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 						PeerRegionName: MockTestRegion,
 					},
 				}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 				vcnClient.EXPECT().ListRemotePeeringConnections(gomock.Any(), gomock.Eq(core.ListRemotePeeringConnectionsRequest{
 					DrgId:         common.String("drg-id"),
 					CompartmentId: common.String("compartment-id"),
@@ -726,7 +725,7 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 						PeerRegionName: MockTestRegion,
 					},
 				}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 				vcnClient.EXPECT().ListRemotePeeringConnections(gomock.Any(), gomock.Eq(core.ListRemotePeeringConnectionsRequest{
 					DrgId:         common.String("drg-id"),
 					CompartmentId: common.String("compartment-id"),
@@ -832,13 +831,13 @@ func TestDRGRPCAttachmentReconciliation(t *testing.T) {
 
 func TestDRGRPCAttachmentDeletion(t *testing.T) {
 	var (
-		cs            *ClusterScope
-		mockCtrl      *gomock.Controller
-		vcnClient     *mock_vcn.MockClient
-		peerVcnClient *mock_vcn.MockClient
-		ociCluster    infrastructurev1beta1.OCICluster
-		tags          map[string]string
-		vcnPeering    infrastructurev1beta1.VCNPeering
+		cs                 *ClusterScope
+		mockCtrl           *gomock.Controller
+		vcnClient          *mock_vcn.MockClient
+		peerVcnClient      *mock_vcn.MockClient
+		ociClusterAccessor OCISelfManagedCluster
+		tags               map[string]string
+		vcnPeering         infrastructurev1beta1.VCNPeering
 	)
 
 	setup := func(t *testing.T, g *WithT) {
@@ -846,14 +845,16 @@ func TestDRGRPCAttachmentDeletion(t *testing.T) {
 		mockCtrl = gomock.NewController(t)
 		vcnClient = mock_vcn.NewMockClient(mockCtrl)
 		client := fake.NewClientBuilder().Build()
-		ociCluster = infrastructurev1beta1.OCICluster{
-			ObjectMeta: metav1.ObjectMeta{
-				UID:  "cluster_uid",
-				Name: "cluster",
-			},
-			Spec: infrastructurev1beta1.OCIClusterSpec{
-				CompartmentId:         "compartment-id",
-				OCIResourceIdentifier: "resource_uid",
+		ociClusterAccessor = OCISelfManagedCluster{
+			&infrastructurev1beta1.OCICluster{
+				ObjectMeta: metav1.ObjectMeta{
+					UID:  "cluster_uid",
+					Name: "cluster",
+				},
+				Spec: infrastructurev1beta1.OCIClusterSpec{
+					CompartmentId:         "compartment-id",
+					OCIResourceIdentifier: "resource_uid",
+				},
 			},
 		}
 
@@ -864,13 +865,13 @@ func TestDRGRPCAttachmentDeletion(t *testing.T) {
 		mockProvider, err := MockNewClientProvider(mockClients)
 		g.Expect(err).To(BeNil())
 
-		ociCluster.Spec.ControlPlaneEndpoint.Port = 6443
+		ociClusterAccessor.OCICluster.Spec.ControlPlaneEndpoint.Port = 6443
 		cs, err = NewClusterScope(ClusterScopeParams{
-			VCNClient:      vcnClient,
-			Cluster:        &clusterv1.Cluster{},
-			OCICluster:     &ociCluster,
-			Client:         client,
-			ClientProvider: mockProvider,
+			VCNClient:          vcnClient,
+			Cluster:            &clusterv1.Cluster{},
+			OCIClusterAccessor: ociClusterAccessor,
+			Client:             client,
+			ClientProvider:     mockProvider,
 		})
 		tags = make(map[string]string)
 		tags[ociutil.CreatedBy] = ociutil.OCIClusterAPIProvider
@@ -913,7 +914,7 @@ func TestDRGRPCAttachmentDeletion(t *testing.T) {
 						RPCConnectionId:     common.String("local-connection-id"),
 					},
 				}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 				vcnClient.EXPECT().GetRemotePeeringConnection(gomock.Any(), gomock.Eq(core.GetRemotePeeringConnectionRequest{
 					RemotePeeringConnectionId: common.String("local-connection-id"),
 				})).
@@ -956,7 +957,7 @@ func TestDRGRPCAttachmentDeletion(t *testing.T) {
 						RPCConnectionId:     common.String("local-connection-id"),
 					},
 				}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 				vcnClient.EXPECT().GetRemotePeeringConnection(gomock.Any(), gomock.Eq(core.GetRemotePeeringConnectionRequest{
 					RemotePeeringConnectionId: common.String("local-connection-id"),
 				})).
@@ -1027,7 +1028,7 @@ func TestDRGRPCAttachmentDeletion(t *testing.T) {
 						RPCConnectionId:     common.String("local-connection-id"),
 					},
 				}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 				vcnClient.EXPECT().GetRemotePeeringConnection(gomock.Any(), gomock.Eq(core.GetRemotePeeringConnectionRequest{
 					RemotePeeringConnectionId: common.String("local-connection-id"),
 				})).
@@ -1061,7 +1062,7 @@ func TestDRGRPCAttachmentDeletion(t *testing.T) {
 						RPCConnectionId:     common.String("local-connection-id"),
 					},
 				}
-				ociCluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
+				ociClusterAccessor.OCICluster.Spec.NetworkSpec.VCNPeering = &vcnPeering
 				vcnClient.EXPECT().GetRemotePeeringConnection(gomock.Any(), gomock.Eq(core.GetRemotePeeringConnectionRequest{
 					RemotePeeringConnectionId: common.String("local-connection-id"),
 				})).

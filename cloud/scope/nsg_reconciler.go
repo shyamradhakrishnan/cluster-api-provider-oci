@@ -28,7 +28,7 @@ import (
 )
 
 func (s *ClusterScope) ReconcileNSG(ctx context.Context) error {
-	desiredNSGs := s.OCIClusterBase.GetVCN().NetworkSecurityGroups
+	desiredNSGs := s.OCIClusterAccessor.GetNetworkSpec().Vcn.NetworkSecurityGroups
 	for _, desiredNSG := range desiredNSGs {
 		nsg, err := s.GetNSG(ctx, *desiredNSG)
 		if err != nil {
@@ -103,7 +103,7 @@ func (s *ClusterScope) GetNSG(ctx context.Context, spec infrastructurev1beta1.NS
 }
 
 func (s *ClusterScope) DeleteNSGs(ctx context.Context) error {
-	desiredNSGs := s.OCIClusterBase.GetVCN().NetworkSecurityGroups
+	desiredNSGs := s.OCIClusterAccessor.GetNetworkSpec().Vcn.NetworkSecurityGroups
 	for _, desiredNSG := range desiredNSGs {
 		nsg, err := s.GetNSG(ctx, *desiredNSG)
 		if err != nil && !ociutil.IsNotFound(err) {
@@ -126,7 +126,7 @@ func (s *ClusterScope) DeleteNSGs(ctx context.Context) error {
 }
 
 func (s *ClusterScope) GetNSGSpec() []*infrastructurev1beta1.NSG {
-	return s.OCIClusterBase.GetVCN().NetworkSecurityGroups
+	return s.OCIClusterAccessor.GetNetworkSpec().Vcn.NetworkSecurityGroups
 }
 
 func (s *ClusterScope) IsNSGExitsByRole(role infrastructurev1beta1.Role) bool {

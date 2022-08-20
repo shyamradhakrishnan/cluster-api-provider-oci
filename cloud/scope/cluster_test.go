@@ -1,6 +1,3 @@
-//go:build e2e
-// +build e2e
-
 /*
  Copyright (c) 2021, 2022 Oracle and/or its affiliates.
 
@@ -231,16 +228,18 @@ func TestClusterScope_ReconcileFailureDomains(t *testing.T) {
 	l := log.FromContext(context.Background())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ociCluster := infrastructurev1beta1.OCICluster{
-				Spec: tt.spec,
-				ObjectMeta: metav1.ObjectMeta{
-					UID: "a",
+			ociClusterAccessor := OCISelfManagedCluster{
+				OCICluster: &infrastructurev1beta1.OCICluster{
+					Spec: tt.spec,
+					ObjectMeta: metav1.ObjectMeta{
+						UID: "a",
+					},
 				},
 			}
 			s := &ClusterScope{
-				IdentityClient: identityClient,
-				OCICluster:     &ociCluster,
-				Logger:         &l,
+				IdentityClient:     identityClient,
+				OCIClusterAccessor: &ociClusterAccessor,
+				Logger:             &l,
 			}
 			err := s.ReconcileFailureDomains(context.Background())
 			if (err != nil) != tt.wantErr {

@@ -1,6 +1,3 @@
-//go:build e2e
-// +build e2e
-
 /*
  Copyright (c) 2021, 2022 Oracle and/or its affiliates.
 
@@ -768,15 +765,17 @@ func TestClusterScope_NSGSpec(t *testing.T) {
 	l := log.FromContext(context.Background())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ociCluster := infrastructurev1beta1.OCICluster{
-				ObjectMeta: metav1.ObjectMeta{
-					UID: "cluster_uid",
+			ociClusterAccessor := OCISelfManagedCluster{
+				&infrastructurev1beta1.OCICluster{
+					ObjectMeta: metav1.ObjectMeta{
+						UID: "cluster_uid",
+					},
+					Spec: tt.spec,
 				},
-				Spec: tt.spec,
 			}
-			ociCluster.Spec.OCIResourceIdentifier = "resource_uid"
+			ociClusterAccessor.OCICluster.Spec.OCIResourceIdentifier = "resource_uid"
 			s := &ClusterScope{
-				OCICluster: &ociCluster,
+				OCIClusterAccessor: ociClusterAccessor,
 				Cluster: &clusterv1.Cluster{
 					ObjectMeta: metav1.ObjectMeta{
 						UID: "cluster_uid",
@@ -784,17 +783,9 @@ func TestClusterScope_NSGSpec(t *testing.T) {
 				},
 				Logger: &l,
 			}
-			nsgs, err := s.NSGSpec()
+			nsgs := s.OCIClusterAccessor.GetNetworkSpec().Vcn.NetworkSecurityGroups
 			if !isNSGEqual(tt.want, nsgs) {
 				t.Errorf("NSGSpec() want = %v, got %v", tt.want, nsgs)
-			}
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NSGSpec() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if err != nil {
-				if err.Error() != tt.expectedError {
-					t.Errorf("NSGSpec() expected error = %s, actual error %s", tt.expectedError, err.Error())
-				}
 			}
 		})
 	}
@@ -931,17 +922,19 @@ func TestClusterScope_DeleteNSGs(t *testing.T) {
 	l := log.FromContext(context.Background())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ociCluster := infrastructurev1beta1.OCICluster{
-				Spec: tt.spec,
-				ObjectMeta: metav1.ObjectMeta{
-					UID: "cluster_uid",
+			ociClusterAccessor := OCISelfManagedCluster{
+				&infrastructurev1beta1.OCICluster{
+					Spec: tt.spec,
+					ObjectMeta: metav1.ObjectMeta{
+						UID: "cluster_uid",
+					},
 				},
 			}
-			ociCluster.Spec.OCIResourceIdentifier = "resource_uid"
+			ociClusterAccessor.OCICluster.Spec.OCIResourceIdentifier = "resource_uid"
 			s := &ClusterScope{
-				VCNClient:  vcnClient,
-				OCICluster: &ociCluster,
-				Logger:     &l,
+				VCNClient:          vcnClient,
+				OCIClusterAccessor: ociClusterAccessor,
+				Logger:             &l,
 			}
 			err := s.DeleteNSGs(context.Background())
 			if (err != nil) != tt.wantErr {
@@ -1549,16 +1542,18 @@ func TestClusterScope_ReconcileNSG(t *testing.T) {
 	l := log.FromContext(context.Background())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ociCluster := infrastructurev1beta1.OCICluster{
-				ObjectMeta: metav1.ObjectMeta{
-					UID: "cluster_uid",
+			ociClusterAccessor := OCISelfManagedCluster{
+				&infrastructurev1beta1.OCICluster{
+					ObjectMeta: metav1.ObjectMeta{
+						UID: "cluster_uid",
+					},
+					Spec: tt.spec,
 				},
-				Spec: tt.spec,
 			}
-			ociCluster.Spec.OCIResourceIdentifier = "resource_uid"
+			ociClusterAccessor.OCICluster.Spec.OCIResourceIdentifier = "resource_uid"
 			s := &ClusterScope{
-				VCNClient:  vcnClient,
-				OCICluster: &ociCluster,
+				VCNClient:          vcnClient,
+				OCIClusterAccessor: ociClusterAccessor,
 				Cluster: &clusterv1.Cluster{
 					ObjectMeta: metav1.ObjectMeta{
 						UID: "resource_uid",

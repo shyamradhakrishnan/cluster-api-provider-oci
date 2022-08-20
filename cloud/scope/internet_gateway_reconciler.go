@@ -37,7 +37,7 @@ func (s *ClusterScope) ReconcileInternetGateway(ctx context.Context) error {
 		return err
 	}
 	if igw != nil {
-		vcnSpec := s.OCIClusterBase.GetVCN()
+		vcnSpec := s.OCIClusterAccessor.GetNetworkSpec().Vcn
 		vcnSpec.InternetGatewayId = igw.Id
 		if !s.IsTagsEqual(igw.FreeformTags, igw.DefinedTags) {
 			return s.UpdateInternetGateway(ctx)
@@ -49,7 +49,7 @@ func (s *ClusterScope) ReconcileInternetGateway(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	vcnSpec := s.OCIClusterBase.GetVCN()
+	vcnSpec := s.OCIClusterAccessor.GetNetworkSpec().Vcn
 	vcnSpec.InternetGatewayId = internetGateway
 	return err
 }
@@ -60,7 +60,7 @@ func (s *ClusterScope) ReconcileInternetGateway(ctx context.Context) error {
 //
 // 2. Listing the Internet Gateways for the Compartment (by ID) and filtering by tag
 func (s *ClusterScope) GetInternetGateway(ctx context.Context) (*core.InternetGateway, error) {
-	gwId := s.OCIClusterBase.GetVCN().InternetGatewayId
+	gwId := s.OCIClusterAccessor.GetNetworkSpec().Vcn.InternetGatewayId
 	if gwId != nil {
 		resp, err := s.VCNClient.GetInternetGateway(ctx, core.GetInternetGatewayRequest{
 			IgId: gwId,
@@ -99,7 +99,7 @@ func (s *ClusterScope) UpdateInternetGateway(ctx context.Context) error {
 		DefinedTags:  s.GetDefinedTags(),
 	}
 	igwResponse, err := s.VCNClient.UpdateInternetGateway(ctx, core.UpdateInternetGatewayRequest{
-		IgId:                         s.OCIClusterBase.GetVCN().InternetGatewayId,
+		IgId:                         s.OCIClusterAccessor.GetNetworkSpec().Vcn.InternetGatewayId,
 		UpdateInternetGatewayDetails: updateIGWDetails,
 	})
 	if err != nil {
