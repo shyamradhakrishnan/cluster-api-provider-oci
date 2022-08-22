@@ -37,8 +37,7 @@ func (s *ClusterScope) ReconcileNatGateway(ctx context.Context) error {
 		return err
 	}
 	if ngw != nil {
-		vcnSpec := s.OCIClusterAccessor.GetNetworkSpec().Vcn
-		vcnSpec.NatGatewayId = ngw.Id
+		s.OCIClusterAccessor.GetNetworkSpec().Vcn.NatGatewayId = ngw.Id
 		if !s.IsTagsEqual(ngw.FreeformTags, ngw.DefinedTags) {
 			return s.UpdateNatGateway(ctx)
 		}
@@ -46,8 +45,7 @@ func (s *ClusterScope) ReconcileNatGateway(ctx context.Context) error {
 		return nil
 	}
 	natGateway, err := s.CreateNatGateway(ctx)
-	vcnSpec := s.OCIClusterAccessor.GetNetworkSpec().Vcn
-	vcnSpec.NatGatewayId = natGateway
+	s.OCIClusterAccessor.GetNetworkSpec().Vcn.NatGatewayId = natGateway
 	return err
 }
 

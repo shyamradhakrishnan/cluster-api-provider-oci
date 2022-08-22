@@ -37,8 +37,7 @@ func (s *ClusterScope) ReconcileServiceGateway(ctx context.Context) error {
 		return err
 	}
 	if sgw != nil {
-		vcnSpec := s.OCIClusterAccessor.GetNetworkSpec().Vcn
-		vcnSpec.ServiceGatewayId = sgw.Id
+		s.OCIClusterAccessor.GetNetworkSpec().Vcn.ServiceGatewayId = sgw.Id
 		if !s.IsTagsEqual(sgw.FreeformTags, sgw.DefinedTags) {
 			return s.UpdateServiceGateway(ctx)
 		}
@@ -46,8 +45,7 @@ func (s *ClusterScope) ReconcileServiceGateway(ctx context.Context) error {
 		return nil
 	}
 	serviceGateway, err := s.CreateServiceGateway(ctx)
-	vcnSpec := s.OCIClusterAccessor.GetNetworkSpec().Vcn
-	vcnSpec.ServiceGatewayId = serviceGateway
+	s.OCIClusterAccessor.GetNetworkSpec().Vcn.ServiceGatewayId = serviceGateway
 	return err
 }
 

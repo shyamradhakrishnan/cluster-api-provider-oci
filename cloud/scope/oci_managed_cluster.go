@@ -41,10 +41,6 @@ func (c OCIManagedCluster) GetVCNPeering() *infrastructurev1beta1.VCNPeering {
 	return c.OCIManagedCluster.Spec.NetworkSpec.VCNPeering
 }
 
-func (c OCIManagedCluster) GetVCN() *infrastructurev1beta1.VCN {
-	return &c.OCIManagedCluster.Spec.NetworkSpec.Vcn
-}
-
 func (c OCIManagedCluster) GetAPIServerLB() *infrastructurev1beta1.LoadBalancer {
 	return nil
 }

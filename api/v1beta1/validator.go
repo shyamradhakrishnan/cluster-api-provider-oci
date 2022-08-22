@@ -75,7 +75,7 @@ func validateNetworkSpec(networkSpec NetworkSpec, old NetworkSpec, fldPath *fiel
 	}
 
 	if networkSpec.Vcn.NetworkSecurityGroups != nil {
-		allErrs = append(allErrs, validateNSGs(networkSpec.Vcn.NetworkSecurityGroups, networkSpec.Vcn, fldPath.Child("networkSecurityGroups"))...)
+		allErrs = append(allErrs, validateNSGs(networkSpec.Vcn.NetworkSecurityGroups, fldPath.Child("networkSecurityGroups"))...)
 	}
 
 	if len(allErrs) == 0 {
@@ -125,7 +125,7 @@ func validateSubnetCIDR(subnetCidr string, vcnCidr string, fldPath *field.Path) 
 }
 
 // validateNSGs validates a list of Subnets.
-func validateNSGs(networkSecurityGroups []*NSG, vcn VCN, fldPath *field.Path) field.ErrorList {
+func validateNSGs(networkSecurityGroups []*NSG, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
 	for i, nsg := range networkSecurityGroups {

@@ -18,6 +18,7 @@ package scope
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/oracle/cluster-api-provider-oci/cloud/ociutil"
 	"github.com/oracle/oci-go-sdk/v63/common"
@@ -37,8 +38,7 @@ func (s *ClusterScope) ReconcileInternetGateway(ctx context.Context) error {
 		return err
 	}
 	if igw != nil {
-		vcnSpec := s.OCIClusterAccessor.GetNetworkSpec().Vcn
-		vcnSpec.InternetGatewayId = igw.Id
+		s.OCIClusterAccessor.GetNetworkSpec().Vcn.InternetGatewayId = igw.Id
 		if !s.IsTagsEqual(igw.FreeformTags, igw.DefinedTags) {
 			return s.UpdateInternetGateway(ctx)
 		}
@@ -49,8 +49,7 @@ func (s *ClusterScope) ReconcileInternetGateway(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	vcnSpec := s.OCIClusterAccessor.GetNetworkSpec().Vcn
-	vcnSpec.InternetGatewayId = internetGateway
+	s.OCIClusterAccessor.GetNetworkSpec().Vcn.InternetGatewayId = internetGateway
 	return err
 }
 
@@ -98,6 +97,7 @@ func (s *ClusterScope) UpdateInternetGateway(ctx context.Context) error {
 		FreeformTags: s.GetFreeFormTags(),
 		DefinedTags:  s.GetDefinedTags(),
 	}
+	s.Logger.Info(fmt.Sprintf("internet gateway id is %v", s.OCIClusterAccessor.GetNetworkSpec().Vcn))
 	igwResponse, err := s.VCNClient.UpdateInternetGateway(ctx, core.UpdateInternetGatewayRequest{
 		IgId:                         s.OCIClusterAccessor.GetNetworkSpec().Vcn.InternetGatewayId,
 		UpdateInternetGatewayDetails: updateIGWDetails,

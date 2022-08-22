@@ -23,7 +23,6 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/gomega"
 	infrastructurev1beta1 "github.com/oracle/cluster-api-provider-oci/api/v1beta1"
-	"github.com/oracle/cluster-api-provider-oci/cloud/scope"
 	mock_scope "github.com/oracle/cluster-api-provider-oci/cloud/scope/mocks"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -111,12 +110,11 @@ func TestOCIClusterReconciler_Reconcile(t *testing.T) {
 
 func TestOCIClusterReconciler_reconcile(t *testing.T) {
 	var (
-		r                  OCIClusterReconciler
-		mockCtrl           *gomock.Controller
-		recorder           *record.FakeRecorder
-		ociCluster         *infrastructurev1beta1.OCICluster
-		ociClusterAccessor scope.OCIClusterAccessor
-		cs                 *mock_scope.MockClusterScopeClient
+		r          OCIClusterReconciler
+		mockCtrl   *gomock.Controller
+		recorder   *record.FakeRecorder
+		ociCluster *infrastructurev1beta1.OCICluster
+		cs         *mock_scope.MockClusterScopeClient
 	)
 
 	setup := func(t *testing.T, g *WithT) {
@@ -128,9 +126,6 @@ func TestOCIClusterReconciler_reconcile(t *testing.T) {
 			Spec:       infrastructurev1beta1.OCIClusterSpec{},
 			Status:     infrastructurev1beta1.OCIClusterStatus{},
 		}
-		ociClusterAccessor = scope.OCISelfManagedCluster{
-			OCICluster: ociCluster,
-		}
 		recorder = record.NewFakeRecorder(20)
 		client := fake.NewClientBuilder().WithObjects(getSecret()).Build()
 		r = OCIClusterReconciler{
@@ -139,7 +134,7 @@ func TestOCIClusterReconciler_reconcile(t *testing.T) {
 			Recorder: recorder,
 			Region:   MockTestRegion,
 		}
-		cs.EXPECT().GetOCIClusterAccessor().Return(ociClusterAccessor)
+		//cs.EXPECT().GetOCIClusterAccessor().Return(ociClusterAccessor)
 	}
 	teardown := func(t *testing.T, g *WithT) {
 		mockCtrl.Finish()
@@ -401,12 +396,11 @@ func TestOCIClusterReconciler_reconcile(t *testing.T) {
 
 func TestOCIClusterReconciler_reconcileDelete(t *testing.T) {
 	var (
-		r                  OCIClusterReconciler
-		mockCtrl           *gomock.Controller
-		recorder           *record.FakeRecorder
-		ociClusterAccessor scope.OCIClusterAccessor
-		ociCluster         *infrastructurev1beta1.OCICluster
-		cs                 *mock_scope.MockClusterScopeClient
+		r          OCIClusterReconciler
+		mockCtrl   *gomock.Controller
+		recorder   *record.FakeRecorder
+		ociCluster *infrastructurev1beta1.OCICluster
+		cs         *mock_scope.MockClusterScopeClient
 	)
 
 	setup := func(t *testing.T, g *WithT) {
@@ -418,9 +412,6 @@ func TestOCIClusterReconciler_reconcileDelete(t *testing.T) {
 			Spec:       infrastructurev1beta1.OCIClusterSpec{},
 			Status:     infrastructurev1beta1.OCIClusterStatus{},
 		}
-		ociClusterAccessor = scope.OCISelfManagedCluster{
-			OCICluster: ociCluster,
-		}
 		recorder = record.NewFakeRecorder(10)
 		client := fake.NewClientBuilder().WithObjects(getSecret()).Build()
 		r = OCIClusterReconciler{
@@ -428,7 +419,7 @@ func TestOCIClusterReconciler_reconcileDelete(t *testing.T) {
 			Scheme:   runtime.NewScheme(),
 			Recorder: recorder,
 		}
-		cs.EXPECT().GetOCIClusterAccessor().Return(ociClusterAccessor)
+		//cs.EXPECT().GetOCIClusterAccessor().Return(ociClusterAccessor)
 	}
 	teardown := func(t *testing.T, g *WithT) {
 		mockCtrl.Finish()
