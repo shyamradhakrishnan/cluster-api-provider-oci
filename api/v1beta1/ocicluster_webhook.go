@@ -168,7 +168,7 @@ func (c *OCICluster) SubnetSpec() []*Subnet {
 			Type: Public,
 		})
 	} else {
-		if cpEndpointSubnet.CIDR != "" {
+		if cpEndpointSubnet.CIDR == "" {
 			cpEndpointSubnet.CIDR = ControlPlaneEndpointSubnetDefaultCIDR
 		}
 	}
@@ -181,7 +181,7 @@ func (c *OCICluster) SubnetSpec() []*Subnet {
 			Type: Private,
 		})
 	} else {
-		if cpSubnet.CIDR != "" {
+		if cpSubnet.CIDR == "" {
 			cpSubnet.CIDR = ControlPlaneMachineSubnetDefaultCIDR
 		}
 	}
@@ -194,7 +194,7 @@ func (c *OCICluster) SubnetSpec() []*Subnet {
 			Type: Public,
 		})
 	} else {
-		if lbServiceSubnet.CIDR != "" {
+		if lbServiceSubnet.CIDR == "" {
 			lbServiceSubnet.CIDR = ServiceLoadBalancerDefaultCIDR
 		}
 	}
@@ -208,7 +208,7 @@ func (c *OCICluster) SubnetSpec() []*Subnet {
 		})
 	} else {
 		for _, subnet := range nodeSubnet {
-			if subnet.CIDR != "" {
+			if subnet.CIDR == "" {
 				subnet.CIDR = WorkerSubnetDefaultCIDR
 			}
 		}
@@ -243,7 +243,7 @@ func (c *OCICluster) NSGSpec() []*NSG {
 			EgressRules:  c.GetNodeDefaultEgressRules(),
 		})
 	}
-	if !c.IsNSGExitsByRole(WorkerRole) && !c.IsSecurityListExitsByRole(ServiceLoadBalancerRole) {
+	if !c.IsNSGExitsByRole(ServiceLoadBalancerRole) && !c.IsSecurityListExitsByRole(ServiceLoadBalancerRole) {
 		nsgs = append(nsgs, &NSG{
 			Role:         ServiceLoadBalancerRole,
 			Name:         ServiceLBDefaultName,
