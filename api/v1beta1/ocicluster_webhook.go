@@ -162,66 +162,100 @@ func (c *OCICluster) validate(old *OCICluster) field.ErrorList {
 }
 
 func (c *OCICluster) SubnetSpec() []*Subnet {
-	subnets := make([]*Subnet, 0)
-	subnets = append(subnets, &Subnet{
-		Role: ControlPlaneEndpointRole,
-		Name: ControlPlaneEndpointDefaultName,
-		CIDR: ControlPlaneEndpointSubnetDefaultCIDR,
-		Type: Public,
-	})
+	subnets := c.Spec.NetworkSpec.Vcn.Subnets
 
-	subnets = append(subnets, &Subnet{
-		Role: ControlPlaneRole,
-		Name: ControlPlaneDefaultName,
-		CIDR: ControlPlaneMachineSubnetDefaultCIDR,
-		Type: Private,
-	})
-
-	subnets = append(subnets, &Subnet{
-		Role: ServiceLoadBalancerRole,
-		Name: ServiceLBDefaultName,
-		CIDR: ServiceLoadBalancerDefaultCIDR,
-		Type: Public,
-	})
-	subnets = append(subnets, &Subnet{
-		Role: WorkerRole,
-		Name: WorkerDefaultName,
-		CIDR: WorkerSubnetDefaultCIDR,
-		Type: Private,
-	})
-
+	cpEndpointSubnet := c.GetControlPlaneEndpointSubnet()
+	if cpEndpointSubnet == nil {
+		subnets = append(subnets, &Subnet{
+			Role: ControlPlaneEndpointRole,
+			Name: ControlPlaneEndpointDefaultName,
+			CIDR: ControlPlaneEndpointSubnetDefaultCIDR,
+			Type: Public,
+		})
+	} else {
+		if cpEndpointSubnet.CIDR != "" {
+			cpEndpointSubnet.CIDR = ControlPlaneEndpointSubnetDefaultCIDR
+		}
+	}
+	cpSubnet := c.GetControlPlaneMachineSubnet()
+	if cpSubnet == nil {
+		subnets = append(subnets, &Subnet{
+			Role: ControlPlaneRole,
+			Name: ControlPlaneDefaultName,
+			CIDR: ControlPlaneMachineSubnetDefaultCIDR,
+			Type: Private,
+		})
+	} else {
+		if cpSubnet.CIDR != "" {
+			cpSubnet.CIDR = ControlPlaneMachineSubnetDefaultCIDR
+		}
+	}
+	lbServiceSubnet := c.GetServiceLoadBalancerSubnet()
+	if lbServiceSubnet == nil {
+		subnets = append(subnets, &Subnet{
+			Role: ServiceLoadBalancerRole,
+			Name: ServiceLBDefaultName,
+			CIDR: ServiceLoadBalancerDefaultCIDR,
+			Type: Public,
+		})
+	} else {
+		if lbServiceSubnet.CIDR != "" {
+			lbServiceSubnet.CIDR = ServiceLoadBalancerDefaultCIDR
+		}
+	}
+	nodeSubnet := c.GetNodeSubnet()
+	if nodeSubnet == nil {
+		subnets = append(subnets, &Subnet{
+			Role: WorkerRole,
+			Name: WorkerDefaultName,
+			CIDR: WorkerSubnetDefaultCIDR,
+			Type: Private,
+		})
+	} else {
+		for _, subnet := range nodeSubnet {
+			if subnet.CIDR != "" {
+				subnet.CIDR = WorkerSubnetDefaultCIDR
+			}
+		}
+	}
 	return subnets
 }
 
 func (c *OCICluster) NSGSpec() []*NSG {
-	nsgs := make([]*NSG, 0)
-	nsgs = append(nsgs, &NSG{
-		Role:         ControlPlaneEndpointRole,
-		Name:         ControlPlaneEndpointDefaultName,
-		IngressRules: c.GetControlPlaneEndpointDefaultIngressRules(),
-		EgressRules:  c.GetControlPlaneEndpointDefaultEgressRules(),
-	})
+	nsgs := c.Spec.NetworkSpec.Vcn.NetworkSecurityGroups
 
-	nsgs = append(nsgs, &NSG{
-		Role:         ControlPlaneRole,
-		Name:         ControlPlaneDefaultName,
-		IngressRules: c.GetControlPlaneMachineDefaultIngressRules(),
-		EgressRules:  c.GetControlPlaneMachineDefaultEgressRules(),
-	})
-
-	nsgs = append(nsgs, &NSG{
-		Role:         WorkerRole,
-		Name:         WorkerDefaultName,
-		IngressRules: c.GetNodeDefaultIngressRules(),
-		EgressRules:  c.GetNodeDefaultEgressRules(),
-	})
-
-	nsgs = append(nsgs, &NSG{
-		Role:         ServiceLoadBalancerRole,
-		Name:         ServiceLBDefaultName,
-		IngressRules: c.GetServiceLoadBalancerDefaultIngressRules(),
-		EgressRules:  c.GetServiceLoadBalancerDefaultEgressRules(),
-	})
+	if !c.IsNSGExitsByRole(ControlPlaneEndpointRole) && !c.IsSecurityListExitsByRole(ControlPlaneEndpointRole) {
+		nsgs = append(nsgs, &NSG{
+			Role:         ControlPlaneEndpointRole,
+			Name:         ControlPlaneEndpointDefaultName,
+			IngressRules: c.GetControlPlaneEndpointDefaultIngressRules(),
+			EgressRules:  c.GetControlPlaneEndpointDefaultEgressRules(),
+		})
+	}
+	if !c.IsNSGExitsByRole(ControlPlaneRole) && !c.IsSecurityListExitsByRole(ControlPlaneRole) {
+		nsgs = append(nsgs, &NSG{
+			Role:         ControlPlaneRole,
+			Name:         ControlPlaneDefaultName,
+			IngressRules: c.GetControlPlaneMachineDefaultIngressRules(),
+			EgressRules:  c.GetControlPlaneMachineDefaultEgressRules(),
+		})
+	}
+	if !c.IsNSGExitsByRole(WorkerRole) && !c.IsSecurityListExitsByRole(WorkerRole) {
+		nsgs = append(nsgs, &NSG{
+			Role:         WorkerRole,
+			Name:         WorkerDefaultName,
+			IngressRules: c.GetNodeDefaultIngressRules(),
+			EgressRules:  c.GetNodeDefaultEgressRules(),
+		})
+	}
+	if !c.IsNSGExitsByRole(WorkerRole) && !c.IsSecurityListExitsByRole(ServiceLoadBalancerRole) {
+		nsgs = append(nsgs, &NSG{
+			Role:         ServiceLoadBalancerRole,
+			Name:         ServiceLBDefaultName,
+			IngressRules: c.GetServiceLoadBalancerDefaultIngressRules(),
+			EgressRules:  c.GetServiceLoadBalancerDefaultEgressRules(),
+		})
+	}
 	return nsgs
 }
 
@@ -639,4 +673,61 @@ func (c *OCICluster) GetControlPlaneEndpointDefaultEgressRules() []EgressSecurit
 			},
 		},
 	}
+}
+
+func (c *OCICluster) GetControlPlaneEndpointSubnet() *Subnet {
+	for _, subnet := range c.Spec.NetworkSpec.Vcn.Subnets {
+		if subnet.Role == ControlPlaneEndpointRole {
+			return subnet
+		}
+	}
+	return nil
+}
+
+func (c *OCICluster) GetControlPlaneMachineSubnet() *Subnet {
+	for _, subnet := range c.Spec.NetworkSpec.Vcn.Subnets {
+		if subnet.Role == ControlPlaneRole {
+			return subnet
+		}
+	}
+	return nil
+}
+
+func (c *OCICluster) GetServiceLoadBalancerSubnet() *Subnet {
+	for _, subnet := range c.Spec.NetworkSpec.Vcn.Subnets {
+		if subnet.Role == ServiceLoadBalancerRole {
+			return subnet
+		}
+	}
+	return nil
+}
+
+func (c *OCICluster) GetNodeSubnet() []*Subnet {
+	var nodeSubnets []*Subnet
+	for _, subnet := range c.Spec.NetworkSpec.Vcn.Subnets {
+		if subnet.Role == WorkerRole {
+			nodeSubnets = append(nodeSubnets, subnet)
+		}
+	}
+	return nodeSubnets
+}
+
+func (c *OCICluster) IsNSGExitsByRole(role Role) bool {
+	for _, nsg := range c.Spec.NetworkSpec.Vcn.NetworkSecurityGroups {
+		if role == nsg.Role {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *OCICluster) IsSecurityListExitsByRole(role Role) bool {
+	for _, subnet := range c.Spec.NetworkSpec.Vcn.Subnets {
+		if role == subnet.Role {
+			if subnet.SecurityList != nil {
+				return true
+			}
+		}
+	}
+	return false
 }
