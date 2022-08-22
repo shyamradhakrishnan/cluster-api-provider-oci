@@ -46,13 +46,8 @@ func (c *OCICluster) Default() {
 		c.Spec.OCIResourceIdentifier = string(uuid.NewUUID())
 	}
 	if !c.Spec.NetworkSpec.SkipNetworkManagement {
-		if len(c.Spec.NetworkSpec.Vcn.Subnets) == 0 {
-			c.Spec.NetworkSpec.Vcn.Subnets = c.SubnetSpec()
-		}
-		if len(c.Spec.NetworkSpec.Vcn.NetworkSecurityGroups) == 0 {
-			c.Spec.NetworkSpec.Vcn.NetworkSecurityGroups = c.NSGSpec()
-		}
-		clusterlogger.Info("cluster", "c", c)
+		c.Spec.NetworkSpec.Vcn.Subnets = c.SubnetSpec()
+		c.Spec.NetworkSpec.Vcn.NetworkSecurityGroups = c.NSGSpec()
 	}
 }
 
