@@ -183,12 +183,11 @@ func (s *ClusterScope) CreateRouteTable(ctx context.Context, routeTableType stri
 }
 
 func (s *ClusterScope) setRTStatus(id *string, routeTableType string) {
-	vcnSpec := s.OCIClusterAccessor.GetNetworkSpec().Vcn
 	if routeTableType == infrastructurev1beta1.Private {
-		vcnSpec.PrivateRouteTableId = id
+		s.OCIClusterAccessor.GetNetworkSpec().Vcn.PrivateRouteTableId = id
 		return
 	}
-	vcnSpec.PublicRouteTableId = id
+	s.OCIClusterAccessor.GetNetworkSpec().Vcn.PublicRouteTableId = id
 }
 
 func (s *ClusterScope) DeleteRouteTables(ctx context.Context) error {
