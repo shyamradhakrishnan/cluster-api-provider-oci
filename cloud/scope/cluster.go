@@ -315,7 +315,7 @@ func (s *ClusterScope) GetAdjustedDefinedTags(tags map[string]map[string]interfa
 	ignoredTags := os.Getenv("IGNORED_DEFINED_TAGS")
 	s.Logger.Info("ignore defined tags", "value", ignoredTags)
 	if ignoredTags != "" {
-		ignoredTagsList := strings.Split(ignoredTags, "#.#")
+		ignoredTagsList := strings.Split(ignoredTags, ",")
 		for _, ignoredTag := range ignoredTagsList {
 			ignoredTagList := strings.Split(ignoredTag, ".")
 			if len(ignoredTagList) == 1 {
