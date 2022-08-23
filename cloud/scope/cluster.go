@@ -283,14 +283,15 @@ func (s *ClusterScope) APIServerPort() int32 {
 // GetFreeFormTags returns a map of FreeformTags defined in the OCICluster's spec
 func (s *ClusterScope) GetFreeFormTags() map[string]string {
 	tags := s.OCICluster.Spec.FreeformTags
-	if tags == nil {
-		tags = make(map[string]string)
+	completeTags := make(map[string]string)
+	for k, v := range tags {
+		completeTags[k] = v
 	}
-	tagsAddedByClusterAPI := ociutil.BuildClusterTags(string(s.OCICluster.GetOCIResourceIdentifier()))
+	tagsAddedByClusterAPI := ociutil.BuildClusterTags(s.OCICluster.GetOCIResourceIdentifier())
 	for k, v := range tagsAddedByClusterAPI {
-		tags[k] = v
+		completeTags[k] = v
 	}
-	return tags
+	return completeTags
 }
 
 func (s *ClusterScope) GetOCICluster() *infrastructurev1beta1.OCICluster {
