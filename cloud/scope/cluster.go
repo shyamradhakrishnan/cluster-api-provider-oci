@@ -313,14 +313,17 @@ func (s *ClusterScope) isPeeringEnabled() bool {
 func (s *ClusterScope) GetAdjustedDefinedTags(tags map[string]map[string]interface{}) (map[string]map[string]interface{}, map[string]map[string]interface{}) {
 	defaultTags := make(map[string]map[string]interface{})
 	ignoredTags := os.Getenv("IGNORED_DEFINED_TAGS")
+	s.Logger.Info("ignore defined tags", "value", ignoredTags)
 	if ignoredTags != "" {
 		ignoredTagsList := strings.Split(ignoredTags, "#.#")
 		for _, ignoredTag := range ignoredTagsList {
 			ignoredTagList := strings.Split(ignoredTag, ".")
 			if len(ignoredTagList) == 1 {
 				key := ignoredTagList[0]
+				s.Logger.Info("ignore tag", "value", key)
 				value, ok := defaultTags[key]
 				if ok {
+					s.Logger.Info("removing tag", "value", key)
 					defaultTags[key] = value
 					delete(tags, key)
 				}
@@ -361,5 +364,6 @@ func (s *ClusterScope) GetCompleteTags(specTags map[string]map[string]interface{
 			}
 		}
 	}
+	s.Logger.Info("complete tags", mapMerged)
 	return mapMerged
 }
