@@ -321,7 +321,7 @@ func (s *ClusterScope) GetAdjustedDefinedTags(tags map[string]map[string]interfa
 			if len(ignoredTagList) == 1 {
 				key := ignoredTagList[0]
 				s.Logger.Info("ignore tag", "value", key)
-				value, ok := defaultTags[key]
+				value, ok := tags[key]
 				if ok {
 					s.Logger.Info("removing tag", "value", key)
 					defaultTags[key] = value
@@ -330,7 +330,7 @@ func (s *ClusterScope) GetAdjustedDefinedTags(tags map[string]map[string]interfa
 			} else if len(ignoredTagList) == 2 {
 				namespace := ignoredTagList[0]
 				key := ignoredTagList[1]
-				valueNameSpace, ok := defaultTags[namespace]
+				valueNameSpace, ok := tags[namespace]
 				if ok {
 					mapIgnoredKey, ok := defaultTags[namespace]
 					if !ok {
@@ -364,6 +364,6 @@ func (s *ClusterScope) GetCompleteTags(specTags map[string]map[string]interface{
 			}
 		}
 	}
-	s.Logger.Info("complete tags", mapMerged)
+	s.Logger.Info("complete tags", "merged", mapMerged)
 	return mapMerged
 }
