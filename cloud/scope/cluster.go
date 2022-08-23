@@ -355,13 +355,17 @@ func (s *ClusterScope) GetAdjustedDefinedTags(tags map[string]map[string]interfa
 
 func (s *ClusterScope) GetCompleteTags(specTags map[string]map[string]interface{}, ignoredTags map[string]map[string]interface{}) map[string]map[string]interface{} {
 	mapMerged := make(map[string]map[string]interface{})
-	for key, rightVal := range specTags {
-		mapMerged[key] = rightVal
-		value, ok := ignoredTags[key]
+	for key, value := range specTags {
+		mapMerged[key] = value
+	}
+	for key, value := range ignoredTags {
+		valueMerged, ok := mapMerged[key]
 		if ok {
-			for keyIgnore, valueIgnore := range value {
-				mapMerged[key][keyIgnore] = valueIgnore
+			for keyDefault, valueDefault := range value {
+				valueMerged[keyDefault] = valueDefault
 			}
+		} else {
+			mapMerged[key] = value
 		}
 	}
 	s.Logger.Info("complete tags", "merged", mapMerged)
