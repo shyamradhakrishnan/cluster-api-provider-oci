@@ -227,7 +227,10 @@ func (s *ClusterScope) setAvailabiltyDomainStatus(ctx context.Context, ads []ide
 }
 
 func (s *ClusterScope) IsTagsEqual(freeFromTags map[string]string, definedTags map[string]map[string]interface{}) bool {
-	if reflect.DeepEqual(freeFromTags, s.GetFreeFormTags()) && reflect.DeepEqual(definedTags, s.GetDefinedTags()) {
+	freeFormTagsEqual := reflect.DeepEqual(freeFromTags, s.GetFreeFormTags())
+	definedTagsEqual := reflect.DeepEqual(definedTags, s.GetDefinedTags())
+	s.Logger.Info("Equals", "freeform", freeFormTagsEqual, "defined", definedTagsEqual)
+	if freeFormTagsEqual && definedTagsEqual {
 		return true
 	}
 	return false
