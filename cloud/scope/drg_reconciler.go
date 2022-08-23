@@ -46,8 +46,9 @@ func (s *ClusterScope) ReconcileDRG(ctx context.Context) error {
 	}
 	if drg != nil {
 		s.getDRG().ID = drg.Id
-		if !s.IsTagsEqual(drg.FreeformTags, drg.DefinedTags) {
-			_, err := s.updateDRG(ctx)
+		compareTags, defaultTags := s.GetAdjustedDefinedTags(drg.DefinedTags)
+		if !s.IsTagsEqual(drg.FreeformTags, compareTags) {
+			_, err := s.updateDRG(ctx, defaultTags)
 			if err != nil {
 				return err
 			}
@@ -131,12 +132,12 @@ func (s *ClusterScope) createDRG(ctx context.Context) (*core.Drg, error) {
 	return &response.Drg, nil
 }
 
-func (s *ClusterScope) updateDRG(ctx context.Context) (*core.Drg, error) {
+func (s *ClusterScope) updateDRG(ctx context.Context, defaultTags map[string]map[string]interface{}) (*core.Drg, error) {
 	response, err := s.VCNClient.UpdateDrg(ctx, core.UpdateDrgRequest{
 		DrgId: s.getDRG().ID,
 		UpdateDrgDetails: core.UpdateDrgDetails{
 			FreeformTags: s.GetFreeFormTags(),
-			DefinedTags:  s.GetDefinedTags(),
+			DefinedTags:  s.GetCompleteTags(s.GetDefinedTags(), defaultTags),
 		},
 	})
 	if err != nil {

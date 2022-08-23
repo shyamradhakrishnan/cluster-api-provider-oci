@@ -19,9 +19,12 @@ package scope
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
-	"sigs.k8s.io/cluster-api/util/conditions"
 	"strconv"
+	"strings"
+
+	"sigs.k8s.io/cluster-api/util/conditions"
 
 	"github.com/oracle/cluster-api-provider-oci/cloud/services/vcn"
 
@@ -304,4 +307,59 @@ func (s *ClusterScope) getDrgID() *string {
 
 func (s *ClusterScope) isPeeringEnabled() bool {
 	return s.OCICluster.Spec.NetworkSpec.VCNPeering != nil
+}
+
+// GetAdjustedDefinedTags returns the defined tags which are controlled by CAPOCI
+func (s *ClusterScope) GetAdjustedDefinedTags(tags map[string]map[string]interface{}) (map[string]map[string]interface{}, map[string]map[string]interface{}) {
+	defaultTags := make(map[string]map[string]interface{})
+	ignoredTags := os.Getenv("IGNORED_DEFINED_TAGS")
+	if ignoredTags != "" {
+		ignoredTagsList := strings.Split(ignoredTags, "#.#")
+		for _, ignoredTag := range ignoredTagsList {
+			ignoredTagList := strings.Split(ignoredTag, ".")
+			if len(ignoredTagList) == 1 {
+				key := ignoredTagList[0]
+				value, ok := defaultTags[key]
+				if ok {
+					defaultTags[key] = value
+					delete(tags, key)
+				}
+			} else if len(ignoredTagList) == 2 {
+				namespace := ignoredTagList[0]
+				key := ignoredTagList[1]
+				valueNameSpace, ok := defaultTags[namespace]
+				if ok {
+					mapIgnoredKey, ok := defaultTags[namespace]
+					if !ok {
+						mapIgnoredKey = make(map[string]interface{})
+						defaultTags[namespace] = mapIgnoredKey
+					}
+					valueKey, ok := valueNameSpace[key]
+					if ok {
+						defaultTags[namespace][key] = valueKey
+						delete(valueNameSpace, key)
+					}
+				}
+			}
+
+		}
+
+	}
+	s.Logger.Info("spec tags ", "tags", tags)
+	s.Logger.Info("default tags ", "tags", defaultTags)
+	return tags, defaultTags
+}
+
+func (s *ClusterScope) GetCompleteTags(specTags map[string]map[string]interface{}, ignoredTags map[string]map[string]interface{}) map[string]map[string]interface{} {
+	mapMerged := make(map[string]map[string]interface{})
+	for key, rightVal := range specTags {
+		mapMerged[key] = rightVal
+		value, ok := ignoredTags[key]
+		if ok {
+			for keyIgnore, valueIgnore := range value {
+				mapMerged[key][keyIgnore] = valueIgnore
+			}
+		}
+	}
+	return mapMerged
 }

@@ -37,19 +37,20 @@ func (s *ClusterScope) ReconcileVCN(ctx context.Context) error {
 	}
 	if vcn != nil {
 		s.OCICluster.Spec.NetworkSpec.Vcn.ID = vcn.Id
-		if s.IsVcnEquals(vcn, desiredVCN) {
+		compareTags, defaultTags := s.GetAdjustedDefinedTags(vcn.DefinedTags)
+		if s.IsVcnEquals(vcn, desiredVCN, compareTags) {
 			s.Logger.Info("No Reconciliation Required for VCN", "vcn", s.getVcnId())
 			return nil
 		}
-		return s.UpdateVCN(ctx, desiredVCN)
+		return s.UpdateVCN(ctx, desiredVCN, defaultTags)
 	}
 	vcnId, err := s.CreateVCN(ctx, desiredVCN)
 	s.OCICluster.Spec.NetworkSpec.Vcn.ID = vcnId
 	return err
 }
 
-func (s *ClusterScope) IsVcnEquals(actual *core.Vcn, desired infrastructurev1beta1.VCN) bool {
-	if *actual.DisplayName == desired.Name && s.IsTagsEqual(actual.FreeformTags, actual.DefinedTags) {
+func (s *ClusterScope) IsVcnEquals(actual *core.Vcn, desired infrastructurev1beta1.VCN, definedTags map[string]map[string]interface{}) bool {
+	if *actual.DisplayName == desired.Name && s.IsTagsEqual(actual.FreeformTags, definedTags) {
 		return true
 	}
 	return false
@@ -110,10 +111,10 @@ func (s *ClusterScope) GetVCN(ctx context.Context) (*core.Vcn, error) {
 	return nil, nil
 }
 
-func (s *ClusterScope) UpdateVCN(ctx context.Context, vcn infrastructurev1beta1.VCN) error {
+func (s *ClusterScope) UpdateVCN(ctx context.Context, vcn infrastructurev1beta1.VCN, defaultTags map[string]map[string]interface{}) error {
 	updateVCNDetails := core.UpdateVcnDetails{
 		DisplayName:  common.String(vcn.Name),
-		DefinedTags:  s.GetDefinedTags(),
+		DefinedTags:  s.GetCompleteTags(s.GetDefinedTags(), defaultTags),
 		FreeformTags: s.GetFreeFormTags(),
 	}
 	vcnResponse, err := s.VCNClient.UpdateVcn(ctx, core.UpdateVcnRequest{
