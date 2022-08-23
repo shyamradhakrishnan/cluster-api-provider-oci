@@ -335,8 +335,10 @@ func (s *ClusterScope) GetAdjustedDefinedTags(tags map[string]map[string]interfa
 			} else if len(ignoredTagList) == 2 {
 				namespace := ignoredTagList[0]
 				key := ignoredTagList[1]
+				s.Logger.Info("length 2", "key", key, "namespace", namespace)
 				valueNameSpace, ok := tags[namespace]
 				if ok {
+					s.Logger.Info("namespace found")
 					mapIgnoredKey, ok := defaultTags[namespace]
 					if !ok {
 						mapIgnoredKey = make(map[string]interface{})
@@ -346,6 +348,9 @@ func (s *ClusterScope) GetAdjustedDefinedTags(tags map[string]map[string]interfa
 					if ok {
 						defaultTags[namespace][key] = valueKey
 						delete(valueNameSpace, key)
+					}
+					if len(tags[namespace]) == 0 {
+						delete(tags, namespace)
 					}
 				}
 			}
