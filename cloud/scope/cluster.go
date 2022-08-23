@@ -230,6 +230,7 @@ func (s *ClusterScope) IsTagsEqual(freeFromTags map[string]string, definedTags m
 	freeFormTagsEqual := reflect.DeepEqual(freeFromTags, s.GetFreeFormTags())
 	definedTagsEqual := reflect.DeepEqual(definedTags, s.GetDefinedTags())
 	s.Logger.Info("Equals", "freeform", freeFormTagsEqual, "defined", definedTagsEqual)
+	s.Logger.Info("Defined", "spec", s.GetDefinedTags(), "actual", definedTags)
 	if freeFormTagsEqual && definedTagsEqual {
 		return true
 	}
