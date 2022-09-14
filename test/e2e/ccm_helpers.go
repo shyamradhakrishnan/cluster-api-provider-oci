@@ -21,10 +21,14 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	nlb "github.com/oracle/cluster-api-provider-oci/cloud/services/networkloadbalancer"
+	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/networkloadbalancer"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -90,6 +94,7 @@ func createService(svcName string, svcNamespace string, labels map[string]string
 			Name:      svcName,
 			Annotations: map[string]string{
 				"service.beta.kubernetes.io/oci-load-balancer-internal": "true",
+				"oci.oraclecloud.com/load-balancer-type":                "nlb",
 			},
 		},
 		Spec: serviceSpec,
@@ -206,7 +211,7 @@ func deployStatefulSet(statefulsetinfo statefulSetInfo, volClaimTemp corev1.Pers
 }
 
 func deleteStatefulSet(statefulsetinfo statefulSetInfo, k8sclient crclient.Client) {
-	Byf("Deploying Statefulset with name: %s under namespace: %s", statefulsetinfo.name, statefulsetinfo.namespace)
+	Logf("Deploying Statefulset with name: %s under namespace: %s", statefulsetinfo.name, statefulsetinfo.namespace)
 	statefulset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Name: statefulsetinfo.name, Namespace: statefulsetinfo.namespace},
 	}
@@ -252,6 +257,27 @@ func deleteLBService(svcNamespace string, svcName string, k8sclient crclient.Cli
 	deleteService(svcName, svcNamespace, nil, svcSpec, k8sclient)
 }
 
+// this function will delete any dangling load balancers till the ccm bug which is creating multiple LB for a single
+// service is fixed
+func deleteDanglingLoadBalancers(lbClient nlb.NetworkLoadBalancerClient, nlbName string, compartmentId string) {
+	// not doing pagination as it may be an overkill
+	Logf("Compartment is %s", compartmentId)
+	Logf("Display name of NLB is %s", nlbName)
+	resp, err := lbClient.ListNetworkLoadBalancers(context.Background(), networkloadbalancer.ListNetworkLoadBalancersRequest{
+		DisplayName:   common.String(nlbName),
+		CompartmentId: common.String(compartmentId),
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Logf("Number of items is %d", len(resp.Items))
+	for _, nlb := range resp.Items {
+		// we dont have to be smart enough to wait for nlb deletion here once work request is accepted, since this is a test!
+		Logf("Delete dangling load balancer with id %s", *nlb.Id)
+		_, err := lbClient.DeleteNetworkLoadBalancer(context.TODO(), networkloadbalancer.DeleteNetworkLoadBalancerRequest{
+			NetworkLoadBalancerId: nlb.Id,
+		})
+		Expect(err).NotTo(HaveOccurred())
+	}
+}
 func deleteService(svcName string, svcNamespace string, labels map[string]string, serviceSpec corev1.ServiceSpec, k8sClient crclient.Client) {
 	svcToDelete := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -269,9 +295,27 @@ func deleteService(svcName string, svcNamespace string, labels map[string]string
 			svcCreated := &corev1.Service{}
 			err := k8sClient.Get(context.TODO(), apimachinerytypes.NamespacedName{Namespace: svcNamespace, Name: svcName}, svcCreated)
 			if err != nil && errors.IsNotFound(err) {
+				Logf("error is %v", err)
+				Logf("LB Service has been deleted")
 				return true, nil
 			}
+			Logf("error is %v", err)
+			Logf("LB Service is not yet deleted")
 			return false, nil
-		}, 3*time.Minute, 30*time.Second,
+		}, 5*time.Minute, 30*time.Second,
 	).Should(BeTrue())
+}
+
+func getNLBName(svcName string, svcNamespace string, k8sClient crclient.Client) string {
+	svcCreated := &corev1.Service{}
+	err := k8sClient.Get(context.TODO(), apimachinerytypes.NamespacedName{Namespace: svcNamespace, Name: svcName}, svcCreated)
+	Expect(err).NotTo(HaveOccurred())
+	// copied from oci ccm code
+	name := fmt.Sprintf("%s/%s/%s", svcNamespace, svcName, svcCreated.UID)
+	if len(name) > 1024 {
+		// 1024 is the max length for display name
+		// https://docs.us-phoenix-1.oraclecloud.com/api/#/en/loadbalancer/20170115/requests/UpdateLoadBalancerDetails
+		name = name[:1024]
+	}
+	return name
 }

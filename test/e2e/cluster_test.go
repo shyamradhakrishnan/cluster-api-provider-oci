@@ -255,6 +255,7 @@ var _ = Describe("Workload cluster creation", func() {
 		clusterClient := workloadClusterProxy.GetClient()
 		lbServiceName := "test-svc-" + util.RandomString(6)
 		createLBService(metav1.NamespaceDefault, lbServiceName, clusterClient)
+		nlbName := getNLBName(lbServiceName, metav1.NamespaceDefault, clusterClient)
 
 		nginxStatefulsetInfo := statefulSetInfo{
 			name:                      "nginx-statefulset",
@@ -273,15 +274,17 @@ var _ = Describe("Workload cluster creation", func() {
 			volMountPath:              "/usr/share/nginx/html",
 		}
 
-		By("Deploying StatefulSet on infra")
+		Logf("Deploying StatefulSet on infra")
 
 		createStatefulSet(nginxStatefulsetInfo, clusterClient)
 
-		By("Deleting LB service")
+		Logf("Deleting LB service")
 		deleteLBService(metav1.NamespaceDefault, lbServiceName, clusterClient)
-		By("Deleting retained dynamically provisioned volumes")
+
+		Logf("Deleting retained dynamically provisioned volumes")
 		deleteStatefulSet(nginxStatefulsetInfo, clusterClient)
 		deletePVC(nginxStatefulsetInfo, clusterClient)
+		deleteDanglingLoadBalancers(lbClient, nlbName, compartment)
 	})
 
 	It("Custom networking NSG [PRBlocking]", func() {
