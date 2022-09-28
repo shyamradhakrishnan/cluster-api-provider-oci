@@ -294,8 +294,17 @@ func (r *OCIManagedMachinePoolReconciler) reconcileNormal(ctx context.Context, l
 	switch nodePool.LifecycleState {
 	case oke.NodePoolLifecycleStateCreating:
 		machinePoolScope.Info("Node Pool is creating")
-		conditions.MarkFalse(machinePoolScope.OCIManagedMachinePool, infrav1exp.NodePoolReadyCondition, infrav1exp.NodePoolNotReadyReason, clusterv1.ConditionSeverityInfo, "")
-		return reconcile.Result{RequeueAfter: 30 * time.Second}, nil
+		instanceCount, err := machinePoolScope.SetListandSetMachinePoolInstances(ctx, nodePool)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		machinePoolScope.SetReplicaCount(instanceCount)
+		machinePoolScope.OCIManagedMachinePool.Status.Ready = true
+		// record the event only when pool goes from not ready to ready state
+		r.Recorder.Eventf(machinePoolScope.OCIManagedMachinePool, corev1.EventTypeNormal, "NodePoolReady",
+			"Node pool is in ready state")
+		conditions.MarkTrue(machinePoolScope.OCIManagedMachinePool, infrav1exp.NodePoolReadyCondition)
+		return reconcile.Result{}, nil
 	case oke.NodePoolLifecycleStateUpdating:
 		machinePoolScope.Info("Node Pool is updating")
 		return reconcile.Result{RequeueAfter: 30 * time.Second}, nil
