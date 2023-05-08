@@ -1145,7 +1145,8 @@ func (in *OCIClusterSpec) DeepCopyInto(out *OCIClusterSpec) {
 			if val == nil {
 				(*out)[key] = nil
 			} else {
-				in, out := &val, &outVal
+				inVal := (*in)[key]
+				in, out := &inVal, &outVal
 				*out = make(map[string]string, len(*in))
 				for key, val := range *in {
 					(*out)[key] = val
@@ -1451,7 +1452,8 @@ func (in *OCIMachineSpec) DeepCopyInto(out *OCIMachineSpec) {
 			if val == nil {
 				(*out)[key] = nil
 			} else {
-				in, out := &val, &outVal
+				inVal := (*in)[key]
+				in, out := &inVal, &outVal
 				*out = make(map[string]string, len(*in))
 				for key, val := range *in {
 					(*out)[key] = val
