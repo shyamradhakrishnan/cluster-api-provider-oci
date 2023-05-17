@@ -176,9 +176,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	logs.InitLogs()
 	// klog.Background will automatically use the right logger.
 	ctrl.SetLogger(klog.Background())
-	logs.InitLogs()
+	klog.StartFlushDaemon(time.Second)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                     scheme,
