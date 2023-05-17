@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"k8s.io/klog/v2/klogr"
 	"os"
 	"time"
 
@@ -178,7 +179,7 @@ func main() {
 
 	logs.InitLogs()
 	// klog.Background will automatically use the right logger.
-	ctrl.SetLogger(klog.NewKlogr())
+	ctrl.SetLogger(klogr.NewWithOptions(klogr.WithFormat(klogr.FormatKlog)))
 	klog.StartFlushDaemon(time.Second)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
