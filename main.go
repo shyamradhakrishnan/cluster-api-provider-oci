@@ -18,7 +18,6 @@ package main
 
 import (
 	"flag"
-	"k8s.io/klog/v2/klogr"
 	"os"
 	"time"
 
@@ -160,12 +159,13 @@ func main() {
 		"",
 		"Namespace that the controller watches to reconcile cluster-api objects. If unspecified, the controller watches for cluster-api objects across all namespaces.",
 	)
-
+	klog.InitFlags(nil)
+	flag.Set("alsologtostderr", "false")
+	flag.Set("log_file", "/var/log/myfile.log")
 	opts := zap.Options{
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
-	klog.InitFlags(nil)
 
 	// Need to use pflags for kubernetes feature flags
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -179,7 +179,9 @@ func main() {
 
 	logs.InitLogs()
 	// klog.Background will automatically use the right logger.
-	ctrl.SetLogger(klogr.NewWithOptions(klogr.WithFormat(klogr.FormatKlog)))
+	ctrl.SetLogger(klog.Background())
+	klog.Info("test")
+	klog.Flush()
 	klog.StartFlushDaemon(time.Second)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
