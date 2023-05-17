@@ -178,6 +178,7 @@ func main() {
 
 	// klog.Background will automatically use the right logger.
 	ctrl.SetLogger(klog.Background())
+	logs.InitLogs()
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                     scheme,
