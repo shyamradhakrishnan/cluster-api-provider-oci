@@ -164,6 +164,7 @@ func main() {
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
+	klog.InitFlags(nil)
 
 	// Need to use pflags for kubernetes feature flags
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
