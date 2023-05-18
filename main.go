@@ -160,8 +160,6 @@ func main() {
 		"Namespace that the controller watches to reconcile cluster-api objects. If unspecified, the controller watches for cluster-api objects across all namespaces.",
 	)
 	klog.InitFlags(nil)
-	flag.Set("alsologtostderr", "false")
-	flag.Set("log_file", "/var/log/myfile.log")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -177,12 +175,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	logs.InitLogs()
 	// klog.Background will automatically use the right logger.
 	ctrl.SetLogger(klog.Background())
-	klog.Info("test")
-	klog.Flush()
-	klog.StartFlushDaemon(time.Second)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                     scheme,
