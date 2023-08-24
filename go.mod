@@ -3,6 +3,7 @@ module github.com/oracle/cluster-api-provider-oci
 go 1.19
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/go-logr/logr v1.2.3
 	github.com/golang/mock v1.6.0
 	github.com/google/gofuzz v1.2.0
@@ -22,7 +23,7 @@ require (
 	sigs.k8s.io/cluster-api v1.4.3
 	sigs.k8s.io/cluster-api/test v1.4.3
 	sigs.k8s.io/controller-runtime v0.14.5
-	github.com/davecgh/go-spew/spew v1.1.1
+	sigs.k8s.io/kind v0.18.0
 )
 
 require (
@@ -41,7 +42,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/coredns/caddy v1.1.0 // indirect
 	github.com/coredns/corefile-migration v1.0.20 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/docker v20.10.24+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
@@ -126,7 +126,6 @@ require (
 	k8s.io/cluster-bootstrap v0.25.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
-	sigs.k8s.io/kind v0.18.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
