@@ -22,6 +22,7 @@ require (
 	sigs.k8s.io/cluster-api v1.4.3
 	sigs.k8s.io/cluster-api/test v1.4.3
 	sigs.k8s.io/controller-runtime v0.14.5
+	github.com/davecgh/go-spew/spew v1.1.1
 )
 
 require (

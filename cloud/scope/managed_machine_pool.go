@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"reflect"
 	"sort"
 	"strconv"
@@ -611,6 +612,7 @@ func (m *ManagedMachinePoolScope) UpdateNodePool(ctx context.Context, pool *oke.
 			return false, err
 		}
 		m.Logger.Info("Node pool", "spec", jsonSpec, "actual", jsonActual)
+		m.Logger.Info("Node pool", "spec", spew.Sdump(*spec), "actual", spew.Sdump(*actual))
 
 		nodeConfigDetails := oke.UpdateNodePoolNodeConfigDetails{
 			NsgIds:                         m.getWorkerMachineNSGs(),
